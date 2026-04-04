@@ -27,18 +27,23 @@ def home():
 @app.post("/extract")
 def extract(data: InputText):
     prompt = f"""
-Extract tasks from this meeting text.
-Return ONLY a JSON array like this:
-[
-    {{"task": "", "owner": "", "deadline": ""}}
-]
+Analyze this meeting text and return a JSON object with two fields:
+1. "summary": A 2-3 sentence summary of the meeting
+2. "tasks": A list of tasks extracted from the meeting
+
+Return ONLY this JSON format:
+{{
+    "summary": "",
+    "tasks": [
+        {{"task": "", "owner": "", "deadline": ""}}
+    ]
+}}
 
 Rules:
-- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday", "next Monday" into actual dates like "April 6, 2026"
-- If no meeting date is found in transcript, use relative terms as they are
-- Extract ALL tasks mentioned
-- Owner should be the person responsible
+- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday" into actual dates like "April 5, 2026"
 - If no deadline mentioned, write "Not specified"
+- Owner should be the person responsible
+- Extract ALL tasks mentioned
 
 Meeting text:
 {data.text}
@@ -47,4 +52,4 @@ Meeting text:
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}]
     )
-    return {"tasks": response.choices[0].message.content}
+    return {"result": response.choices[0].message.content}

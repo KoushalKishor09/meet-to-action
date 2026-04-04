@@ -3,6 +3,7 @@ import { useState } from "react";
 function App() {
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
+  const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
 
   const extractTasks = async () => {
@@ -14,10 +15,12 @@ function App() {
     });
     const data = await response.json();
     try {
-      const parsed = JSON.parse(data.tasks.replace(/```json|```/g, "").trim());
-      setTasks(parsed);
+      const parsed = JSON.parse(data.result.replace(/```json|```/g, "").trim());
+      setTasks(parsed.tasks);
+      setSummary(parsed.summary);
     } catch {
       setTasks([]);
+      setSummary("");
     }
     setLoading(false);
   };
@@ -39,6 +42,13 @@ function App() {
       >
         {loading ? "Extracting..." : "Generate Tasks"}
       </button>
+
+      {summary && (
+        <div style={{ marginTop: "20px", padding: "15px", background: "#f0f0f0", borderRadius: "8px" }}>
+          <h3>Meeting Summary</h3>
+          <p>{summary}</p>
+        </div>
+      )}
 
       {tasks.length > 0 && (
         <table border="1" style={{ marginTop: "20px", width: "100%", borderCollapse: "collapse" }}>
@@ -64,4 +74,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
