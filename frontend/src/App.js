@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import "./App.css";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 function App() {
   const [activeTab, setActiveTab] = useState("text");
@@ -28,8 +30,7 @@ function App() {
         setTasks([]);
         setSummary("");
       } else {
-        const tasksWithStatus = (data.tasks || []).map(t => ({ ...t, status: "Pending" }));
-        setTasks(tasksWithStatus);
+        setTasks(data.tasks || []);
         setSummary(data.summary || "");
       }
     } catch (err) {
@@ -57,8 +58,7 @@ function App() {
         setTasks([]);
         setSummary("");
       } else {
-        const tasksWithStatus = (data.tasks || []).map(t => ({ ...t, status: "Pending" }));
-        setTasks(tasksWithStatus);
+        setTasks(data.tasks || []);
         setSummary(data.summary || "");
       }
     } catch (err) {
@@ -87,22 +87,91 @@ function App() {
     if (file) handleAudioUpload(file);
   };
 
-  const toggleStatus = (index) => {
-    const updated = [...tasks];
-    updated[index].status = updated[index].status === "Done" ? "Pending" : "Done";
-    setTasks(updated);
-  };
-
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(tasks, null, 2)], {
+    const exportData = { summary, tasks };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tasks.json";
+    a.download = "meeting-summary.json";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const timestamp = new Date().toLocaleString();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Title
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text("Meeting Summary Report", pageWidth / 2, 22, { align: "center" });
+
+      // Date
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Generated: ${timestamp}`, pageWidth / 2, 30, { align: "center" });
+
+      // Divider
+      doc.setDrawColor(226, 232, 240);
+      doc.line(14, 34, pageWidth - 14, 34);
+
+      let y = 42;
+
+      // Section 1 – Meeting Summary
+      if (summary) {
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        doc.text("Meeting Summary", 14, y);
+        y += 7;
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 41, 59);
+        const summaryLines = doc.splitTextToSize(summary, pageWidth - 28);
+        doc.text(summaryLines, 14, y);
+        y += summaryLines.length * 6 + 10;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, y - 4, pageWidth - 14, y - 4);
+      }
+
+      // Section 2 – Extracted Tasks
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text("Extracted Tasks", 14, y);
+      y += 6;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["#", "Task", "Owner", "Deadline"]],
+        body: tasks.map((t, i) => [i + 1, t.task || "", t.owner || "", t.deadline || ""]),
+        styles: { fontSize: 11, cellPadding: 5, valign: "middle" },
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 12, halign: "center" },
+          1: { cellWidth: "auto" },
+          2: { cellWidth: 36 },
+          3: { cellWidth: 36 },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      const fileTimestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      doc.save(`meeting-summary-${fileTimestamp}.pdf`);
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   return (
@@ -275,9 +344,14 @@ function App() {
         <section className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <button className="export-btn" onClick={exportJSON}>
-              ⬇️ Export JSON
-            </button>
+            <div className="export-actions">
+              <button className="export-btn" onClick={exportJSON}>
+                ⬇️ Export JSON
+              </button>
+              <button className="export-btn export-btn--pdf" onClick={exportPDF}>
+                📄 Export PDF
+              </button>
+            </div>
           </div>
           <div className="table-wrapper">
             <table className="tasks-table">
@@ -287,25 +361,15 @@ function App() {
                   <th>Task</th>
                   <th>Owner</th>
                   <th>Deadline</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {tasks.map((t, i) => (
-                  <tr key={i} style={{ background: t.status === "Done" ? "#d4edda" : "white" }}>
+                  <tr key={i}>
                     <td className="task-num">{i + 1}</td>
                     <td>{t.task}</td>
                     <td>{t.owner}</td>
                     <td>{t.deadline}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
-                        onClick={() => toggleStatus(i)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {t.status || "Pending"}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
