@@ -28,11 +28,11 @@ function App() {
         setTasks([]);
         setSummary("");
       } else {
-        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        const tasksWithStatus = (data.tasks || []).map(t => ({ ...t, status: "Pending" }));
+        setTasks(tasksWithStatus);
         setSummary(data.summary || "");
       }
     } catch (err) {
-      console.error("Error extracting tasks:", err);
       setError("Failed to connect to the server. Please ensure the backend is running.");
       setTasks([]);
       setSummary("");
@@ -57,14 +57,13 @@ function App() {
         setTasks([]);
         setSummary("");
       } else {
-        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        const tasksWithStatus = (data.tasks || []).map(t => ({ ...t, status: "Pending" }));
+        setTasks(tasksWithStatus);
         setSummary(data.summary || "");
       }
     } catch (err) {
-      console.error("Error processing audio:", err);
       setError("Failed to process the audio file. Please try again.");
       setTasks([]);
-      setSummary("");
     }
     setAudioProcessing(false);
   };
@@ -86,6 +85,12 @@ function App() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) handleAudioUpload(file);
+  };
+
+  const toggleStatus = (index) => {
+    const updated = [...tasks];
+    updated[index].status = updated[index].status === "Done" ? "Pending" : "Done";
+    setTasks(updated);
   };
 
   const exportJSON = () => {
@@ -236,24 +241,21 @@ function App() {
           <span className="feature-icon feature-icon--purple">🔮</span>
           <h3 className="feature-title">Smart Extraction</h3>
           <p className="feature-desc">
-            Automatically identifies action items, owners, and deadlines from
-            natural language.
+            Automatically identifies action items, owners, and deadlines from natural language.
           </p>
         </div>
         <div className="feature-card">
           <span className="feature-icon feature-icon--green">✅</span>
           <h3 className="feature-title">Structured Output</h3>
           <p className="feature-desc">
-            Organises tasks with assignees and due dates in a clean, readable
-            table.
+            Organises tasks with assignees and due dates in a clean, readable table.
           </p>
         </div>
         <div className="feature-card">
           <span className="feature-icon feature-icon--blue">⬇️</span>
           <h3 className="feature-title">Easy Export</h3>
           <p className="feature-desc">
-            Download results as JSON for seamless integration with your project
-            tools.
+            Download results as JSON for seamless integration with your project tools.
           </p>
         </div>
       </section>
@@ -290,14 +292,18 @@ function App() {
               </thead>
               <tbody>
                 {tasks.map((t, i) => (
-                  <tr key={i}>
+                  <tr key={i} style={{ background: t.status === "Done" ? "#d4edda" : "white" }}>
                     <td className="task-num">{i + 1}</td>
                     <td>{t.task}</td>
                     <td>{t.owner}</td>
                     <td>{t.deadline}</td>
                     <td>
-                      <span className="status-badge status-badge--pending">
-                        Pending
+                      <span
+                        className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                        onClick={() => toggleStatus(i)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {t.status || "Pending"}
                       </span>
                     </td>
                   </tr>
