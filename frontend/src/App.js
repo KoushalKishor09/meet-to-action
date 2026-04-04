@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { jsPDF } from "jspdf";
 import "./App.css";
 
 function App() {
@@ -104,89 +103,6 @@ function App() {
     a.download = "tasks.json";
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 14;
-    const usableWidth = pageWidth - margin * 2;
-
-    // Title
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Meeting Summary Report", margin, 20);
-
-    // Generated date
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 28);
-    doc.setTextColor(0, 0, 0);
-
-    let yPos = 40;
-
-    // Meeting Summary section
-    if (summary) {
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      doc.text("Meeting Summary", margin, yPos);
-      yPos += 8;
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      const summaryLines = doc.splitTextToSize(summary, usableWidth);
-      doc.text(summaryLines, margin, yPos);
-      yPos += summaryLines.length * 6 + 12;
-    }
-
-    // Extracted Tasks section
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Extracted Tasks", margin, yPos);
-    yPos += 8;
-
-    // Table column widths
-    const colWidths = [10, 90, 45, 36];
-    const headers = ["#", "Task", "Owner", "Deadline"];
-    const rowHeight = 8;
-
-    // Table header row
-    doc.setFillColor(41, 128, 185);
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.rect(margin, yPos, usableWidth, rowHeight, "F");
-    let xPos = margin;
-    headers.forEach((h, idx) => {
-      doc.text(h, xPos + 2, yPos + 5.5);
-      xPos += colWidths[idx];
-    });
-    yPos += rowHeight;
-
-    // Table data rows
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    tasks.forEach((t, i) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 20;
-      }
-      const rowBg = i % 2 === 0 ? [245, 248, 252] : [255, 255, 255];
-      doc.setFillColor(...rowBg);
-      doc.rect(margin, yPos, usableWidth, rowHeight, "F");
-      xPos = margin;
-      const rowData = [String(i + 1), t.task || "", t.owner || "", t.deadline || ""];
-      rowData.forEach((cell, idx) => {
-        const cellText = doc.splitTextToSize(cell, colWidths[idx] - 4);
-        doc.text(cellText[0] || "", xPos + 2, yPos + 5.5);
-        xPos += colWidths[idx];
-      });
-      yPos += rowHeight;
-    });
-
-    doc.save(`meeting-summary-${timestamp}.pdf`);
   };
 
   return (
@@ -394,11 +310,6 @@ function App() {
                 ))}
               </tbody>
             </table>
-          </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 24px 16px" }}>
-            <button className="export-btn" onClick={exportPDF}>
-              📄 Export as PDF
-            </button>
           </div>
         </section>
       )}
