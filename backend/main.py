@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -62,3 +62,46 @@ Meeting text:
         print(f"JSON parse error: {e}\nRaw response: {raw}")
         result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
     return result
+
+@app.post("/extract-audio")
+async def extract_audio(file: UploadFile = File(...)):
+    try:
+        audio_bytes = await file.read()
+        transcription = client.audio.transcriptions.create(
+            file=(file.filename, audio_bytes),
+            model="whisper-large-v3",
+        )
+        transcript_text = transcription.text
+        prompt = f"""
+Analyze this meeting text and return a JSON object with two fields:
+1. "summary": A 2-3 sentence summary of the meeting
+2. "tasks": A list of tasks extracted from the meeting
+
+Return ONLY this JSON format:
+{{
+    "summary": "",
+    "tasks": [
+        {{"task": "", "owner": "", "deadline": ""}}
+    ]
+}}
+
+Rules:
+- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday" into actual dates like "April 5, 2026"
+- If no deadline mentioned, write "Not specified"
+- Owner should be the person responsible
+- Extract ALL tasks mentioned
+
+Meeting text:
+{transcript_text}
+"""
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = response.choices[0].message.content
+        clean = re.sub(r"```json|```", "", raw).strip()
+        result = json.loads(clean)
+        result["transcript"] = transcript_text
+        return result
+    except Exception as e:
+        return {"tasks": [], "summary": "", "error": str(e)}

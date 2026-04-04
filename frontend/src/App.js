@@ -174,7 +174,7 @@ function App() {
           </div>
         )}
 
-        {/* Audio Upload Panel */}
+{/* Audio Upload Panel */}
         {activeTab === "audio" && (
           <div className="panel" role="tabpanel">
             <div
@@ -223,6 +223,16 @@ function App() {
                   </p>
                 </div>
               )}
+            </div>
+            <div className="textarea-footer">
+              <span></span>
+              <button
+                className="extract-btn"
+                onClick={() => audioFile && handleAudioUpload(audioFile)}
+                disabled={!audioFile || audioProcessing}
+              >
+                {audioProcessing ? "Processing…" : "Extract Tasks"}
+              </button>
             </div>
           </div>
         )}
