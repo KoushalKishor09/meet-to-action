@@ -1,20 +1,13 @@
 import { useState, useRef } from "react";
 import "./App.css";
 
-function parseTasksResponse(raw) {
-  try {
-    return JSON.parse(raw.replace(/```json|```/g, "").trim());
-  } catch {
-    return [];
-  }
-}
-
 function App() {
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [audioFile, setAudioFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [audioProcessing, setAudioProcessing] = useState(false);
@@ -22,18 +15,25 @@ function App() {
 
   const extractTasks = async () => {
     setLoading(true);
+    setError("");
     try {
-      const parsed = JSON.parse(data.result.replace(/```json|```/g, "").trim());
-      setTasks(parsed.tasks);
-      setSummary(parsed.summary);
       const response = await fetch("http://127.0.0.1:8000/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
       const data = await response.json();
-      setTasks(parseTasksResponse(data.tasks));
-    } catch {
+      if (data.error) {
+        setError(data.error);
+        setTasks([]);
+        setSummary("");
+      } else {
+        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        setSummary(data.summary || "");
+      }
+    } catch (err) {
+      console.error("Error extracting tasks:", err);
+      setError("Failed to connect to the server. Please ensure the backend is running.");
       setTasks([]);
       setSummary("");
     }
@@ -52,19 +52,22 @@ function App() {
         body: formData,
       });
       const data = await response.json();
-      setTasks(parseTasksResponse(data.tasks));
-    } catch {
+      if (data.error) {
+        setError(data.error);
+        setTasks([]);
+        setSummary("");
+      } else {
+        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        setSummary(data.summary || "");
+      }
+    } catch (err) {
+      console.error("Error processing audio:", err);
+      setError("Failed to process the audio file. Please try again.");
       setTasks([]);
+      setSummary("");
     }
     setAudioProcessing(false);
   };
-
-      {summary && (
-        <div style={{ marginTop: "20px", padding: "15px", background: "#f0f0f0", borderRadius: "8px" }}>
-          <h3>Meeting Summary</h3>
-          <p>{summary}</p>
-        </div>
-      )}
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -220,6 +223,13 @@ function App() {
         )}
       </main>
 
+      {/* Error Message */}
+      {error && (
+        <div role="alert" style={{ margin: "0 0 24px", padding: "14px 20px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "10px", color: "#b91c1c", fontSize: "14px" }}>
+          ⚠️ {error}
+        </div>
+      )}
+
       {/* Feature Cards */}
       <section className="feature-cards" aria-label="Features">
         <div className="feature-card">
@@ -247,6 +257,16 @@ function App() {
           </p>
         </div>
       </section>
+
+      {/* Meeting Summary */}
+      {summary && (
+        <section className="results-section" style={{ marginBottom: "24px" }} aria-label="Meeting summary">
+          <div className="results-header">
+            <h2 className="results-title">Meeting Summary</h2>
+          </div>
+          <p style={{ padding: "16px 24px", fontSize: "14px", color: "#1e293b", lineHeight: "1.6" }}>{summary}</p>
+        </section>
+      )}
 
       {/* Results Table */}
       {tasks.length > 0 && (

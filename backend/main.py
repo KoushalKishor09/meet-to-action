@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from groq import Groq
 import os
+import json
+import re
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -52,4 +54,11 @@ Meeting text:
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}]
     )
-    return {"result": response.choices[0].message.content}
+    raw = response.choices[0].message.content
+    clean = re.sub(r"```json|```", "", raw).strip()
+    try:
+        result = json.loads(clean)
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}\nRaw response: {raw}")
+        result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
+    return result
