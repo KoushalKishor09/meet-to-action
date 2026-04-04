@@ -364,6 +364,13 @@ body {
   color: #0f172a;
 }
 
+/* ── Export Actions ── */
+.export-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ── Export Button ── */
 .export-btn {
   background: #f1f5f9;
@@ -380,6 +387,18 @@ body {
 .export-btn:hover {
   background: #e2e8f0;
   color: #1e293b;
+}
+
+.export-btn--pdf {
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  border-color: transparent;
+  color: #fff;
+}
+
+.export-btn--pdf:hover {
+  opacity: 0.9;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  color: #fff;
 }
 
 /* ── Tasks Table ── */

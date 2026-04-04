@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { jsPDF } from "jspdf";
 import "./App.css";
 
 function App() {
@@ -98,6 +99,122 @@ function App() {
     a.download = "tasks.json";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = () => {
+    try {
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 40;
+      const contentWidth = pageWidth - margin * 2;
+      let y = 50;
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Meeting Summary", margin, y);
+      y += 30;
+
+      // Summary text
+      if (summary) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(71, 85, 105);
+        const summaryLines = doc.splitTextToSize(summary, contentWidth);
+        doc.text(summaryLines, margin, y);
+        y += summaryLines.length * 16 + 20;
+      }
+
+      // Divider
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 20;
+
+      // Tasks heading
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Extracted Tasks", margin, y);
+      y += 24;
+
+      // Table header background
+      const colWidths = [30, contentWidth * 0.48, contentWidth * 0.24, contentWidth * 0.24];
+      const headers = ["#", "Task", "Owner", "Deadline"];
+      const rowHeight = 28;
+
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, rowHeight, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+
+      let xPos = margin + 8;
+      headers.forEach((h, i) => {
+        doc.text(h, xPos, y + 18);
+        xPos += colWidths[i];
+      });
+      y += rowHeight;
+
+      // Table rows
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+
+      tasks.forEach((t, i) => {
+        const rowValues = [
+          String(i + 1),
+          t.task || "",
+          t.owner || "",
+          t.deadline || "",
+        ];
+
+        // Determine row height based on wrapped task text
+        const taskLines = doc.splitTextToSize(rowValues[1], colWidths[1] - 12);
+        const thisRowHeight = Math.max(rowHeight, taskLines.length * 14 + 14);
+
+        // Check for page overflow
+        if (y + thisRowHeight > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage();
+          y = margin + 20;
+        }
+
+        // Alternate row shading
+        if (i % 2 === 0) {
+          doc.setFillColor(255, 255, 255);
+        } else {
+          doc.setFillColor(248, 250, 252);
+        }
+        doc.rect(margin, y, contentWidth, thisRowHeight, "F");
+
+        // Row border
+        doc.setDrawColor(241, 245, 249);
+        doc.line(margin, y + thisRowHeight, pageWidth - margin, y + thisRowHeight);
+
+        xPos = margin + 8;
+        // Row number
+        doc.text(rowValues[0], xPos, y + 18);
+        xPos += colWidths[0];
+        // Task (wrapped)
+        doc.text(taskLines, xPos, y + 18);
+        xPos += colWidths[1];
+        // Owner
+        const ownerLines = doc.splitTextToSize(rowValues[2], colWidths[2] - 12);
+        doc.text(ownerLines, xPos, y + 18);
+        xPos += colWidths[2];
+        // Deadline
+        const deadlineLines = doc.splitTextToSize(rowValues[3], colWidths[3] - 12);
+        doc.text(deadlineLines, xPos, y + 18);
+
+        y += thisRowHeight;
+      });
+
+      doc.save("meeting-tasks.pdf");
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   return (
@@ -273,9 +390,14 @@ function App() {
         <section className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <button className="export-btn" onClick={exportJSON}>
-              ⬇️ Export JSON
-            </button>
+            <div className="export-actions">
+              <button className="export-btn" onClick={exportJSON}>
+                ⬇️ Export JSON
+              </button>
+              <button className="export-btn export-btn--pdf" onClick={exportPDF}>
+                📄 Export to PDF
+              </button>
+            </div>
           </div>
           <div className="table-wrapper">
             <table className="tasks-table">
@@ -285,7 +407,6 @@ function App() {
                   <th>Task</th>
                   <th>Owner</th>
                   <th>Deadline</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,11 +416,6 @@ function App() {
                     <td>{t.task}</td>
                     <td>{t.owner}</td>
                     <td>{t.deadline}</td>
-                    <td>
-                      <span className="status-badge status-badge--pending">
-                        Pending
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
