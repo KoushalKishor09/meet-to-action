@@ -109,21 +109,38 @@ def extract_tasks_from_text(text: str) -> dict:
         return {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
 
 
-# APScheduler setup
-scheduler = BackgroundScheduler()
+# Telegram notification
+async def send_telegram_message(message: str):
+    try:
+        bot = telegram.Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
+        await bot.send_message(
+            chat_id=os.getenv("TELEGRAM_CHAT_ID"),
+            text=message,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        print(f"Telegram error: {e}")
 
+
+# APScheduler — check every 20 seconds
 def check_deadlines():
-    print("\nChecking deadlines...")
+    print("\n🔔 Checking deadlines...")
     tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
     if not tasks:
-        print("No pending tasks right now!")
+        print("✅ No pending tasks right now!")
     else:
+        message = "🔔 <b>Pending Task Reminders</b>\n\n"
         for task in tasks:
-            print(f"Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+            print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+            message += f"⚠️ <b>Task:</b> {task['task']}\n"
+            message += f"👤 <b>Owner:</b> {task['owner']}\n"
+            message += f"📅 <b>Deadline:</b> {task['deadline']}\n\n"
+        asyncio.run(send_telegram_message(message))
     print("")
 
+
 scheduler = None
-if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not os.environ.get("RUN_MAIN"):
+if not os.environ.get("RUN_MAIN"):
     scheduler = BackgroundScheduler()
     scheduler.add_job(check_deadlines, "interval", seconds=20)
     scheduler.start()
@@ -139,7 +156,7 @@ class StatusUpdate(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "Backend is running"}
+    return {"message": "Backend is running 🚀"}
 
 
 @app.get("/reminders")
@@ -176,7 +193,7 @@ async def extract_audio(file: UploadFile = File(...)):
 
     audio_bytes = await file.read()
     file_size = len(audio_bytes)
-    print(f"Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
+    print(f"📁 Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
 
     if file_size > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
@@ -212,42 +229,3 @@ async def extract_audio(file: UploadFile = File(...)):
 def shutdown():
     if scheduler:
         scheduler.shutdown()
-
-
-import asyncio
-import telegram
-
-async def send_telegram_message(message: str):
-    try:
-        bot = telegram.Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
-        await bot.send_message(
-            chat_id=os.getenv("TELEGRAM_CHAT_ID"),
-            text=message,
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        print(f"Telegram error: {e}")
-
-def check_deadlines():
-    print("\n🔔 Checking deadlines...")
-    tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
-    if not tasks:
-        print("✅ No pending tasks right now!")
-    else:
-        # Build message for Telegram
-        message = "🔔 <b>Pending Task Reminders</b>\n\n"
-        for task in tasks:
-            print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
-            message += f"⚠️ <b>Task:</b> {task['task']}\n"
-            message += f"👤 <b>Owner:</b> {task['owner']}\n"
-            message += f"📅 <b>Deadline:</b> {task['deadline']}\n\n"
-        
-        # Send to Telegram
-        asyncio.run(send_telegram_message(message))
-    print("")
-
-scheduler = None
-if not os.environ.get("RUN_MAIN"):
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(check_deadlines, "interval", seconds=20)
-    scheduler.start()
