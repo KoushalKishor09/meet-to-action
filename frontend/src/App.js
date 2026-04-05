@@ -96,7 +96,7 @@ function App() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://127.0.0.1:8000/extract", {
+      const response = await fetch("https://meet-to-action-backend.onrender.com/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
@@ -134,7 +134,7 @@ function App() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const response = await fetch("http://127.0.0.1:8000/extract-audio", {
+      const response = await fetch("https://meet-to-action-backend.onrender.com/extract-audio", {
         method: "POST",
         body: formData,
       });
@@ -179,7 +179,7 @@ function App() {
     updated[index].status = updated[index].status === "Done" ? "Pending" : "Done";
     setTasks(updated);
 
-    await fetch("http://127.0.0.1:8000/update-status", {
+    await fetch("https://meet-to-action-backend.onrender.com/update-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
