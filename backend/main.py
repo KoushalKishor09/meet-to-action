@@ -138,11 +138,16 @@ def extract_tasks_from_text(text: str) -> dict:
     )
     raw = response.choices[0].message.content
     clean = re.sub(r"```json|```", "", raw).strip()
-    result = json.loads(clean)
+    try:
+        result = json.loads(clean)
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}\nRaw response: {raw}")
+        raise
     for task in result["tasks"]:
         task["status"] = "Pending"
         task["created_at"] = datetime.now().isoformat()
-    tasks_collection.insert_many(result["tasks"])
+    if result["tasks"]:
+        tasks_collection.insert_many(result["tasks"])
     for task in result["tasks"]:
         task.pop("_id", None)
     return result
