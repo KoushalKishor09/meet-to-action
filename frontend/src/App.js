@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import "./App.css";
 
 function App() {
@@ -11,7 +12,36 @@ function App() {
   const [audioFile, setAudioFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [audioProcessing, setAudioProcessing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const fileInputRef = useRef(null);
+  const resultsRef = useRef(null);
+  const exportMenuRef = useRef(null);
+
+  // Auto-scroll to results when tasks are loaded
+  useEffect(() => {
+    if (tasks.length > 0) {
+      resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }
+  }, [tasks]);
+
+  // Close export dropdown on outside click or Escape key
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setShowExportMenu(false);
+    };
+    const handleClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showExportMenu]);
 
   const extractTasks = async () => {
     setLoading(true);
@@ -112,6 +142,67 @@ function App() {
     a.download = "tasks.json";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const timestamp = new Date().toLocaleString();
+
+      doc.setFontSize(18);
+      doc.text("Meeting Summary Report", 14, 18);
+
+      doc.setFontSize(11);
+      doc.text(`Generated: ${timestamp}`, 14, 28);
+
+      if (summary) {
+        doc.setFontSize(13);
+        doc.text("Summary", 14, 42);
+        doc.setFontSize(10);
+        const summaryLines = doc.splitTextToSize(summary, 180);
+        doc.text(summaryLines, 14, 50);
+      }
+
+      const tableStartY = summary ? 50 + doc.splitTextToSize(summary, 180).length * 6 + 10 : 42;
+
+      doc.setFontSize(13);
+      doc.text("Extracted Tasks", 14, tableStartY);
+
+      const headers = ["#", "Task", "Owner", "Deadline", "Status"];
+      const colWidths = [10, 80, 35, 35, 25];
+      const colX = [14, 24, 104, 139, 174];
+      let y = tableStartY + 8;
+
+      doc.setFontSize(10);
+      doc.setFillColor(241, 245, 249);
+      doc.rect(14, y - 4, 182, 8, "F");
+      headers.forEach((h, i) => doc.text(h, colX[i], y));
+      y += 8;
+
+      tasks.forEach((t, idx) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 14;
+        }
+        const rowData = [
+          String(idx + 1),
+          t.task || "",
+          t.owner || "",
+          t.deadline || "",
+          t.status || "Pending",
+        ];
+        rowData.forEach((val, i) => {
+          const truncated = doc.splitTextToSize(val, colWidths[i] - 2)[0];
+          doc.text(truncated, colX[i], y);
+        });
+        y += 8;
+      });
+
+      const filename = `meeting-summary-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.pdf`;
+      doc.save(filename);
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    }
   };
 
   return (
@@ -291,12 +382,42 @@ function App() {
 
       {/* Results Table */}
       {tasks.length > 0 && (
-        <section className="results-section" aria-label="Extracted tasks">
+        <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <button className="export-btn" onClick={exportJSON}>
-              ⬇️ Export JSON
-            </button>
+            <div className="export-dropdown" ref={exportMenuRef}>
+              <button
+                className="export-btn"
+                onClick={() => setShowExportMenu((prev) => !prev)}
+                aria-haspopup="true"
+                aria-expanded={showExportMenu}
+                aria-label="Export"
+              >
+                ⬇️ Export
+              </button>
+              {showExportMenu && (
+                <ul className="export-menu" role="menu">
+                  <li role="none">
+                    <button
+                      role="menuitem"
+                      className="export-menu-item"
+                      onClick={() => { exportJSON(); setShowExportMenu(false); }}
+                    >
+                      📄 Export JSON
+                    </button>
+                  </li>
+                  <li role="none">
+                    <button
+                      role="menuitem"
+                      className="export-menu-item"
+                      onClick={() => { exportPDF(); setShowExportMenu(false); }}
+                    >
+                      🖨️ Export as PDF
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
           </div>
           <div className="table-wrapper">
             <table className="tasks-table">
