@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -25,6 +25,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Supported audio formats: MIME type -> list of valid extensions
+SUPPORTED_AUDIO_FORMATS = {
+    "audio/mpeg":    [".mp3"],
+    "audio/mp4":     [".m4a", ".m4b"],
+    "audio/x-m4a":   [".m4a"],
+    "audio/aac":     [".aac"],
+    "audio/ogg":     [".ogg", ".oga"],
+    "audio/wav":     [".wav"],
+    "audio/x-wav":   [".wav"],
+    "audio/flac":    [".flac"],
+    "audio/webm":    [".webm"],
+    "audio/x-ms-wma": [".wma"],
+}
+
+ALLOWED_EXTENSIONS = {ext for exts in SUPPORTED_AUDIO_FORMATS.values() for ext in exts}
+
+MAX_FILE_SIZE_MB = 50
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+
+def validate_audio_file(filename: str, content_type: str, file_size: int):
+    """Validate uploaded audio file for size (if > 0), extension, and MIME type."""
+    if file_size > 0 and file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
+        )
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file extension '{ext}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
+        )
+
+    if content_type and content_type not in SUPPORTED_AUDIO_FORMATS:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported MIME type '{content_type}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
+        )
 
 # APScheduler setup
 scheduler = BackgroundScheduler()
@@ -112,14 +153,35 @@ def get_tasks():
 
 @app.post("/extract-audio")
 async def extract_audio(file: UploadFile = File(...)):
+    # Validate extension and MIME type before reading the full file body
+    validate_audio_file(file.filename, file.content_type, 0)
+
+    # Read file and enforce size limit
+    audio_bytes = await file.read()
+    file_size = len(audio_bytes)
+
+    print(f"📁 Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
+
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
+        )
+
     try:
-        audio_bytes = await file.read()
         transcription = client.audio.transcriptions.create(
             file=(file.filename, audio_bytes),
             model="whisper-large-v3",
         )
         transcript_text = transcription.text
-        prompt = f"""
+        if not transcript_text or not transcript_text.strip():
+            return {"tasks": [], "summary": "", "transcript": "", "info": "No speech detected in the audio file."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Failed to transcribe audio: {str(e)}")
+
+    prompt = f"""
 Analyze this meeting text and return a JSON object with two fields:
 1. "summary": A 2-3 sentence summary of the meeting
 2. "tasks": A list of tasks extracted from the meeting
@@ -141,6 +203,7 @@ Rules:
 Meeting text:
 {transcript_text}
 """
+    try:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}]
@@ -156,8 +219,11 @@ Meeting text:
             task.pop("_id", None)
         result["transcript"] = transcript_text
         return result
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}\nRaw response: {raw}")
+        raise HTTPException(status_code=500, detail="Could not parse the AI response. Please try again.")
     except Exception as e:
-        return {"tasks": [], "summary": "", "error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Task extraction failed: {str(e)}")
 
 @app.on_event("shutdown")
 def shutdown():
