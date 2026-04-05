@@ -128,8 +128,13 @@ Rules:
 - Extract ALL tasks mentioned
 
 Meeting text:
-{data.text}
+{text}
 """
+
+
+def extract_tasks_from_text(text: str) -> dict:
+    """Send meeting text to the LLM, parse the response, and persist tasks to MongoDB."""
+    prompt = build_extraction_prompt(text)
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}]
@@ -143,11 +148,8 @@ Meeting text:
             task["created_at"] = datetime.now().isoformat()
         tasks_collection.delete_many({})
         tasks_collection.insert_many(result["tasks"])
-        for task in result["tasks"]:
-            task.pop("_id", None)
-    except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}\nRaw response: {raw}")
-        result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
+    for task in result["tasks"]:
+        task.pop("_id", None)
     return result
 
 
@@ -225,7 +227,7 @@ Meeting text:
         result["transcript"] = transcript_text
         return result
     except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}\nRaw response: {raw}")
+        print(f"JSON parse error: {e}")
         raise HTTPException(status_code=500, detail="Could not parse the AI response. Please try again.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Task extraction failed: {str(e)}")
