@@ -323,7 +323,7 @@ You should see output similar to:
 
 The `D` flag confirms **decoding** is supported; `E` confirms **encoding**. Both should be present.
 
-If the `aac` line is missing, reinstall FFmpeg with the `--enable-libfdk-aac` option (advanced; see the [FFmpeg compilation guide](https://trac.ffmpeg.org/wiki/CompilationGuide)).
+> **Note:** The built-in `aac` decoder shown above is sufficient for this application. The advanced `--enable-libfdk-aac` option (which requires building FFmpeg from source with the Fraunhofer FDK AAC library) is only needed for high-quality AAC *encoding* tasks and is subject to additional licensing terms — you do not need it here.
 
 ---
 
@@ -439,7 +439,7 @@ If you see a `415 Unsupported Media Type` error, ensure:
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
 | `ffmpeg: command not found` | FFmpeg not installed | Follow [FFmpeg Setup](#ffmpeg-setup) |
-| `415 Unsupported Media Type` | Unrecognised MIME type | Rename file with correct extension (e.g. `.m4a`) |
+| `415 Unsupported Media Type` | Unrecognised file extension or MIME type | Rename file with a supported extension (e.g. `.m4a`). The backend validates the **file extension** first, then the `Content-Type` header sent by the browser. If your OS reports a non-standard MIME type (e.g. `audio/x-aac` instead of `audio/aac`), renaming the file with the correct extension (`.aac`, `.m4a`) is usually enough. |
 | `Failed to transcribe audio` | Groq API key missing / invalid | Check `GROQ_API_KEY` in `.env` |
 | `File too large` | File exceeds 50 MB | Compress with FFmpeg: `ffmpeg -i input.aac -b:a 64k output.aac` |
 | Blank task list | Audio contains no speech | Use a file with clear human speech |
