@@ -68,6 +68,8 @@ Meeting text:
             task["status"] = "Pending"
             task["created_at"] = datetime.now().isoformat()
         tasks_collection.insert_many(result["tasks"])
+        for task in result["tasks"]:
+                task.pop("_id", None)
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}\nRaw response: {raw}")
         result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
@@ -120,6 +122,8 @@ Meeting text:
             task["status"] = "Pending"
             task["created_at"] = datetime.now().isoformat()
         tasks_collection.insert_many(result["tasks"])
+        for task in result["tasks"]:
+             task.pop("_id", None)
         result["transcript"] = transcript_text
         return result
     except Exception as e:
