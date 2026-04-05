@@ -9,6 +9,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import json
 import re
+import asyncio
+import telegram
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -111,13 +113,20 @@ def extract_tasks_from_text(text: str) -> dict:
 scheduler = BackgroundScheduler()
 
 def check_deadlines():
-    print("🔔 Checking deadlines...")
+    print("\nChecking deadlines...")
     tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
-    for task in tasks:
-        print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+    if not tasks:
+        print("No pending tasks right now!")
+    else:
+        for task in tasks:
+            print(f"Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+    print("")
 
-scheduler.add_job(check_deadlines, "interval", minutes=1)
-scheduler.start()
+scheduler = None
+if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not os.environ.get("RUN_MAIN"):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(check_deadlines, "interval", seconds=20)
+    scheduler.start()
 
 
 class InputText(BaseModel):
@@ -130,7 +139,7 @@ class StatusUpdate(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "Backend is running 🚀"}
+    return {"message": "Backend is running"}
 
 
 @app.get("/reminders")
@@ -141,11 +150,13 @@ def get_reminders():
 
 @app.post("/update-status")
 def update_status(data: StatusUpdate):
-    tasks_collection.update_one(
+    result = tasks_collection.update_one(
         {"task": data.task},
         {"$set": {"status": data.status}}
     )
-    return {"message": "Status updated"}
+    if result.matched_count == 0:
+        return {"message": "Task not found", "success": False}
+    return {"message": "Status updated", "success": True}
 
 
 @app.post("/extract")
@@ -165,7 +176,7 @@ async def extract_audio(file: UploadFile = File(...)):
 
     audio_bytes = await file.read()
     file_size = len(audio_bytes)
-    print(f"📁 Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
+    print(f"Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
 
     if file_size > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
@@ -199,4 +210,44 @@ async def extract_audio(file: UploadFile = File(...)):
 
 @app.on_event("shutdown")
 def shutdown():
-    scheduler.shutdown()
+    if scheduler:
+        scheduler.shutdown()
+
+
+import asyncio
+import telegram
+
+async def send_telegram_message(message: str):
+    try:
+        bot = telegram.Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
+        await bot.send_message(
+            chat_id=os.getenv("TELEGRAM_CHAT_ID"),
+            text=message,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        print(f"Telegram error: {e}")
+
+def check_deadlines():
+    print("\n🔔 Checking deadlines...")
+    tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
+    if not tasks:
+        print("✅ No pending tasks right now!")
+    else:
+        # Build message for Telegram
+        message = "🔔 <b>Pending Task Reminders</b>\n\n"
+        for task in tasks:
+            print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+            message += f"⚠️ <b>Task:</b> {task['task']}\n"
+            message += f"👤 <b>Owner:</b> {task['owner']}\n"
+            message += f"📅 <b>Deadline:</b> {task['deadline']}\n\n"
+        
+        # Send to Telegram
+        asyncio.run(send_telegram_message(message))
+    print("")
+
+scheduler = None
+if not os.environ.get("RUN_MAIN"):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(check_deadlines, "interval", seconds=20)
+    scheduler.start()
