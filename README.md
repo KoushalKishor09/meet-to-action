@@ -7,9 +7,12 @@ A powerful AI-driven application that transforms meeting conversations into acti
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Supported Audio Formats](#supported-audio-formats)
 - [How It Works](#how-it-works)
 - [Installation](#installation)
+- [FFmpeg Setup](#ffmpeg-setup)
 - [Usage](#usage)
+- [Testing AAC Support](#testing-aac-support)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
 - [Reminders & Alerts](#reminders--alerts)
@@ -33,9 +36,9 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
 ## ✨ Features
 
 ### 1. **Speech-to-Text Conversion**
-   - Accepts audio recordings in multiple formats
+   - Accepts audio recordings in **multiple formats**: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA
    - Supports plain-text transcript uploads
-   - **Model**: OpenAI Whisper for accurate speech recognition
+   - **Model**: OpenAI Whisper (via Groq) for accurate speech recognition
 
 ### 2. **Intelligent Task Extraction**
    - Automatically identifies action items from transcripts
@@ -64,6 +67,26 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
    - Combine AI extraction + rule-based tracking
    - Easy integration with other tools and workflows
    - Backup and audit trail capabilities
+
+## 🎵 Supported Audio Formats
+
+The application accepts the following audio formats for upload and transcription:
+
+| Format | Extension(s) | MIME Type | Notes |
+|--------|-------------|-----------|-------|
+| MP3 | `.mp3` | `audio/mpeg` | Standard lossy compression |
+| M4A / M4B | `.m4a`, `.m4b` | `audio/mp4`, `audio/x-m4a` | Apple's AAC container |
+| **AAC** | `.aac` | `audio/aac` | Advanced Audio Coding |
+| OGG | `.ogg`, `.oga` | `audio/ogg` | Open-source container |
+| WAV | `.wav` | `audio/wav`, `audio/x-wav` | Lossless, large files |
+| FLAC | `.flac` | `audio/flac` | Lossless compression |
+| WebM | `.webm` | `audio/webm` | Web streaming format |
+| WMA | `.wma` | `audio/x-ms-wma` | Windows Media Audio |
+
+> **Maximum file size:** 50 MB  
+> **Recommended format for AAC:** Use `.m4a` (AAC in an MPEG-4 container) for best compatibility across all operating systems.
+
+---
 
 ## 🛠 Tech Stack
 
@@ -139,10 +162,10 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
 ### Prerequisites
 - Python 3.8+
 - Node.js 14+ and npm
+- **FFmpeg** (required for AAC/M4A/OGG audio processing — see [FFmpeg Setup](#ffmpeg-setup))
 - API Keys:
-  - OpenAI API (for Whisper)
-  - Google AI Studio API (for Gemini)
-  - Grok API (for LLaMA 3)
+  - Groq API key (for Whisper transcription and LLaMA 3)
+  - MongoDB connection string (for task storage)
 
 ### Backend Setup
 
@@ -158,15 +181,28 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+3. **Install / update backend dependencies**
    ```bash
+   cd backend
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
+
+   > 💡 If you are adding FFmpeg-based local audio conversion (optional), also install `pydub`:
+   > ```bash
+   > pip install pydub
+   > ```
 
 4. **Configure environment variables**
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
+   ```
+
+   The minimum required keys are:
+   ```env
+   GROQ_API_KEY=your_groq_api_key
+   MONGO_URI=your_mongodb_connection_string
    ```
 
 ### Frontend Setup
@@ -186,13 +222,120 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
    npm start
    ```
 
+## 🎬 FFmpeg Setup
+
+FFmpeg is required by the Groq Whisper service and by many audio-processing libraries to decode AAC, M4A, OGG, FLAC, and WebM files. Follow the steps for your operating system.
+
+---
+
+### 🪟 Windows
+
+**Option A — winget (Windows 10/11, recommended)**
+
+1. Open **PowerShell** or **Command Prompt** as Administrator.
+2. Run:
+   ```powershell
+   winget install --id=Gyan.FFmpeg -e
+   ```
+3. Close and reopen your terminal so the `PATH` updates, then verify:
+   ```powershell
+   ffmpeg -version
+   ```
+
+**Option B — Manual install**
+
+1. Download the latest FFmpeg Windows build from [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/) (choose `ffmpeg-release-essentials.zip`).
+2. Extract the zip to a permanent location, e.g. `C:\ffmpeg`.
+3. Add `C:\ffmpeg\bin` to your **System PATH**:
+   - Search for **"Edit the system environment variables"** in the Start menu.
+   - Click **Environment Variables → Path → Edit → New** and paste `C:\ffmpeg\bin`.
+   - Click **OK** on all dialogs.
+4. Open a **new** terminal and verify:
+   ```powershell
+   ffmpeg -version
+   ```
+
+---
+
+### 🍎 macOS
+
+**Option A — Homebrew (recommended)**
+
+1. Install Homebrew if you don't have it:
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. Install FFmpeg:
+   ```bash
+   brew install ffmpeg
+   ```
+3. Verify:
+   ```bash
+   ffmpeg -version
+   ```
+
+**Option B — MacPorts**
+
+```bash
+sudo port install ffmpeg
+ffmpeg -version
+```
+
+---
+
+### 🐧 Linux
+
+**Ubuntu / Debian:**
+```bash
+sudo apt update
+sudo apt install ffmpeg -y
+ffmpeg -version
+```
+
+**Fedora / RHEL / CentOS (with RPM Fusion):**
+```bash
+sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm -y
+sudo dnf install ffmpeg -y
+ffmpeg -version
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S ffmpeg
+ffmpeg -version
+```
+
+---
+
+### ✅ Verify AAC Codec Support
+
+After installing FFmpeg, confirm AAC encoding/decoding is available:
+
+```bash
+ffmpeg -codecs 2>/dev/null | grep aac
+```
+
+You should see output similar to:
+```
+ DEA.L. aac                  AAC (Advanced Audio Coding) (decoders: aac aac_fixed )
+ DEA.L. aac_latm             MPEG-4 Audio LATM syntax
+```
+
+The `D` flag confirms **decoding** is supported; `E` confirms **encoding**. Both should be present.
+
+If the `aac` line is missing, reinstall FFmpeg with the `--enable-libfdk-aac` option (advanced; see the [FFmpeg compilation guide](https://trac.ffmpeg.org/wiki/CompilationGuide)).
+
+---
+
 ## 🚀 Usage
 
 ### Running the Application
 
 1. **Start Backend Server**
    ```bash
-   python app.py
+   cd backend
+   source venv/bin/activate   # On Windows: venv\Scripts\activate
+   uvicorn main:app --reload
    ```
 
 2. **Start Frontend (in another terminal)**
@@ -206,90 +349,138 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
 
 ### Upload a Meeting
 
-1. Click the **"Upload Meeting"** button
-2. Choose one of:
-   - **Record Audio**: Record directly in the app
-   - **Upload Audio File**: Select an audio file (MP3, WAV, M4A)
-   - **Paste Transcript**: Paste text directly
-3. Click **"Process"** and wait for results
-4. Review and manage extracted tasks
+1. Click the **🎙️ Audio Upload** tab (or **📝 Text Input** for transcripts)
+2. For audio:
+   - Drag and drop your file onto the drop zone, **or** click it to browse
+   - Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA (max 50 MB)
+3. Click **Extract Tasks** and wait for transcription + AI extraction
+4. Review the generated summary and task table
 
 ### Managing Tasks
 
-- **View**: All tasks display in the dashboard
-- **Edit**: Click on any task to modify details
-- **Status Update**: Change task status (To-Do → In Progress → Completed)
-- **Delete**: Remove tasks no longer needed
-- **Export**: Download tasks as JSON
+- **View**: Switch between Table and Tiles view using the toggle button
+- **Status Update**: Click a status badge to toggle between **Pending** and **Done**
+- **Export**: Click **⬇️ Export** to download as **JSON** or **PDF**
+
+## 🧪 Testing AAC Support
+
+Follow these steps to verify that AAC and M4A audio files are processed correctly end-to-end.
+
+### Step 1 — Confirm FFmpeg is installed
+
+```bash
+ffmpeg -version
+```
+
+Expected: A version string starting with `ffmpeg version …`. If you see `command not found`, complete the [FFmpeg Setup](#ffmpeg-setup) steps first.
+
+### Step 2 — Verify AAC codec is available
+
+```bash
+ffmpeg -codecs 2>/dev/null | grep -i aac
+```
+
+Expected output contains a line like:
+```
+ DEA.L. aac    AAC (Advanced Audio Coding) (decoders: aac aac_fixed )
+```
+
+### Step 3 — Create a test AAC file (if you don't have one)
+
+If you have an existing MP3 or WAV file, convert it to AAC using FFmpeg:
+
+```bash
+# Convert MP3 → AAC (.aac)
+ffmpeg -i input.mp3 -c:a aac -b:a 128k test_meeting.aac
+
+# Convert MP3 → M4A (AAC inside MPEG-4 container, recommended)
+ffmpeg -i input.mp3 -c:a aac -b:a 128k test_meeting.m4a
+```
+
+> 💡 You can also record a short voice memo on your phone and save it as `.m4a` or `.aac`.
+
+### Step 4 — Start the application
+
+**Terminal 1 — Backend:**
+```bash
+cd backend
+source venv/bin/activate   # On Windows: venv\Scripts\activate
+uvicorn main:app --reload
+```
+
+**Terminal 2 — Frontend:**
+```bash
+cd frontend
+npm start
+```
+
+### Step 5 — Upload and test the AAC file
+
+1. Open [http://localhost:3000](http://localhost:3000) in your browser.
+2. Click the **🎙️ Audio Upload** tab.
+3. Drag your `test_meeting.aac` or `test_meeting.m4a` file onto the drop zone (or click to browse).
+4. Click **Extract Tasks**.
+5. ✅ **Pass:** The app shows a meeting summary and an extracted task table.
+6. ❌ **Fail:** An error banner appears — check the backend terminal for the full error message.
+
+### Step 6 — Check the backend logs
+
+With the backend running, the terminal should print:
+```
+📁 Received file: test_meeting.aac, size: 123.4 KB, MIME: audio/aac
+```
+
+If you see a `415 Unsupported Media Type` error, ensure:
+- The file extension is one of: `.mp3 .m4a .m4b .aac .ogg .oga .wav .flac .webm .wma`
+- The MIME type reported by your OS matches a supported type (e.g. `audio/aac`, `audio/mp4`)
+
+### Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| `ffmpeg: command not found` | FFmpeg not installed | Follow [FFmpeg Setup](#ffmpeg-setup) |
+| `415 Unsupported Media Type` | Unrecognised MIME type | Rename file with correct extension (e.g. `.m4a`) |
+| `Failed to transcribe audio` | Groq API key missing / invalid | Check `GROQ_API_KEY` in `.env` |
+| `File too large` | File exceeds 50 MB | Compress with FFmpeg: `ffmpeg -i input.aac -b:a 64k output.aac` |
+| Blank task list | Audio contains no speech | Use a file with clear human speech |
 
 ## 📁 Project Structure
 
 ```
 meet-to-action/
 ├── backend/
-│   ├── app.py              # Main Flask/FastAPI app
+│   ├── main.py             # FastAPI application (endpoints, audio validation)
 │   ├── requirements.txt    # Python dependencies
-│   ├── config.py           # Configuration
-│   ├── .env.example        # Environment variables template
-│   ├── modules/
-│   │   ├── speech_to_text.py    # Whisper integration
-│   │   ├── task_extraction.py   # LLM extraction logic
-│   │   ├── scheduler.py         # APScheduler setup
-│   │   └── task_manager.py      # Task CRUD operations
-│   └── routes/
-│       ├── upload.py       # File upload endpoints
-│       ├── tasks.py        # Task management endpoints
-│       └── reminders.py    # Reminder endpoints
+│   └── .env                # Environment variables (GROQ_API_KEY, MONGO_URI)
 │
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── TaskForm.jsx
-│   │   │   ├── TaskList.jsx
-│   │   │   └── UploadMeeting.jsx
-│   │   ├── App.jsx
+│   │   ├── App.js          # Main React component (audio upload, task table)
+│   │   ├── App.css         # Styles
+│   │   ├── App.test.js     # Unit tests (format validation, UI)
 │   │   └── index.js
 │   └── package.json
 │
-├── data/
-│   └── tasks.json          # Output tasks
-│
-├── README.md
-├── .gitignore
-└── .env.example
+└── README.md
 ```
 
 ## ⚙️ Configuration
 
 ### Environment Variables (.env)
 
+Create a `.env` file inside the `backend/` directory with the following keys:
+
 ```env
-# OpenAI Configuration
-OPENAI_API_KEY= openai_api_key
+# Groq API (Whisper transcription + LLaMA 3 task extraction)
+GROQ_API_KEY=your_groq_api_key_here
 
-# Google AI Configuration
-GOOGLE_AI_API_KEY=google_ai_key
-GOOGLE_AI_MODEL=gemini-pro  # or your preferred model
-
-# Grok Configuration
-GROK_API_KEY=grok_api_key
-
-# Application Configuration
-DEBUG=True
-PORT=5000
-FRONTEND_URL=http://localhost:3000
-
-# Database Configuration (if using)
-DATABASE_URL=your_database_url
-
-# Email Configuration (for reminders)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_EMAIL=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
+# MongoDB Atlas connection string
+MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/meettask?retryWrites=true&w=majority
 ```
+
+> 🔑 Get your **Groq API key** at [https://console.groq.com](https://console.groq.com)  
+> 🍃 Get your **MongoDB URI** at [https://www.mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
 
 ## 🔔 Reminders & Alerts
 
