@@ -1,5 +1,4 @@
-import { useEffect, useState, useRef } from "react";
-import { jsPDF } from "jspdf";
+import { useState, useRef } from "react";
 import "./App.css";
 
 function App() {
@@ -12,29 +11,7 @@ function App() {
   const [audioFile, setAudioFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [audioProcessing, setAudioProcessing] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
-  const exportDropdownRef = useRef(null);
-
-  useEffect(() => {
-    if (!exportMenuOpen) return undefined;
-    const handleClickOutside = (event) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
-        setExportMenuOpen(false);
-      }
-    };
-    const handleEscape = (event) => {
-      if (event.key === "Escape") {
-        setExportMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [exportMenuOpen]);
 
   const extractTasks = async () => {
     setLoading(true);
@@ -110,94 +87,19 @@ function App() {
     if (file) handleAudioUpload(file);
   };
 
-  const toggleStatus = (index) => {
+  const toggleStatus = async (index) => {
     const updated = [...tasks];
     updated[index].status = updated[index].status === "Done" ? "Pending" : "Done";
     setTasks(updated);
-  };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 14;
-    const usableWidth = pageWidth - margin * 2;
-    let y = 20;
-
-    // Title
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Meeting Summary Report", margin, y);
-    y += 8;
-
-    // Timestamp
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
-    doc.text(`Exported: ${new Date().toLocaleString()}`, margin, y);
-    doc.setTextColor(0);
-    y += 10;
-
-    // Meeting Summary section
-    if (summary) {
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      doc.text("Meeting Summary", margin, y);
-      y += 6;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      const summaryLines = doc.splitTextToSize(summary, usableWidth);
-      doc.text(summaryLines, margin, y);
-      y += summaryLines.length * 6 + 8;
-    }
-
-    // Tasks table section
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Extracted Tasks", margin, y);
-    y += 8;
-
-    // Table header — widths (10+82+50+40=182) match usableWidth for A4 with 14mm margins
-    const colWidths = [10, 82, 50, 40];
-    const headers = ["#", "Task", "Owner", "Deadline"];
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(79, 70, 229);
-    doc.setTextColor(255);
-    doc.rect(margin, y - 5, usableWidth, 8, "F");
-    let x = margin + 2;
-    headers.forEach((h, i) => {
-      doc.text(h, x, y);
-      x += colWidths[i];
+    await fetch("http://127.0.0.1:8000/update-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: updated[index].task,
+        status: updated[index].status
+      })
     });
-    doc.setTextColor(0);
-    y += 5;
-
-    // Table rows
-    doc.setFont("helvetica", "normal");
-    tasks.forEach((t, i) => {
-      const rowColor = i % 2 === 0 ? [249, 250, 251] : [255, 255, 255];
-      doc.setFillColor(...rowColor);
-      doc.rect(margin, y - 5, usableWidth, 8, "F");
-      x = margin + 2;
-      const cells = [String(i + 1), t.task || "", t.owner || "", t.deadline || ""];
-      cells.forEach((cell, ci) => {
-        const maxWidth = colWidths[ci] - 2;
-        const lines = doc.splitTextToSize(cell, maxWidth);
-        // Trim trailing partial word and append ellipsis when text overflows the column
-        const displayText = lines.length > 1 ? lines[0].replace(/\s+\S*$/, "…") : lines[0] || "";
-        doc.text(displayText, x, y);
-        x += colWidths[ci];
-      });
-      y += 8;
-      if (y > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage();
-        y = 20;
-      }
-    });
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    doc.save(`meeting-summary-${timestamp}.pdf`);
-    setExportMenuOpen(false);
   };
 
   const exportJSON = () => {
@@ -210,7 +112,6 @@ function App() {
     a.download = "tasks.json";
     a.click();
     URL.revokeObjectURL(url);
-    setExportMenuOpen(false);
   };
 
   return (
@@ -282,7 +183,7 @@ function App() {
           </div>
         )}
 
-{/* Audio Upload Panel */}
+        {/* Audio Upload Panel */}
         {activeTab === "audio" && (
           <div className="panel" role="tabpanel">
             <div
@@ -393,26 +294,9 @@ function App() {
         <section className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <div className="export-dropdown" ref={exportDropdownRef}>
-              <button
-                className="export-btn"
-                onClick={() => setExportMenuOpen((open) => !open)}
-                aria-haspopup="menu"
-                aria-expanded={exportMenuOpen}
-              >
-                ⬇️ Export
-              </button>
-              {exportMenuOpen && (
-                <div className="export-menu" role="menu">
-                  <button className="export-menu-item" role="menuitem" onClick={exportJSON}>
-                    ⬇️ Export JSON
-                  </button>
-                  <button className="export-menu-item" role="menuitem" onClick={exportPDF}>
-                    📄 Export as PDF
-                  </button>
-                </div>
-              )}
-            </div>
+            <button className="export-btn" onClick={exportJSON}>
+              ⬇️ Export JSON
+            </button>
           </div>
           <div className="table-wrapper">
             <table className="tasks-table">

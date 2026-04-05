@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from pymongo import MongoClient
 from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import json
 import re
@@ -25,12 +26,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# APScheduler setup
+scheduler = BackgroundScheduler()
+
+def check_deadlines():
+    print("🔔 Checking deadlines...")
+    tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
+    for task in tasks:
+        print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
+
+scheduler.add_job(check_deadlines, "interval", minutes=1)
+scheduler.start()
+
 class InputText(BaseModel):
     text: str
 
 @app.get("/")
 def home():
     return {"message": "Backend is running 🚀"}
+
+@app.get("/reminders")
+def get_reminders():
+    tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
+    return {"pending_tasks": tasks, "count": len(tasks)}
+
+class StatusUpdate(BaseModel):
+    task: str
+    status: str
+
+@app.post("/update-status")
+def update_status(data: StatusUpdate):
+    tasks_collection.update_one(
+        {"task": data.task},
+        {"$set": {"status": data.status}}
+    )
+    return {"message": "Status updated"}
 
 @app.post("/extract")
 def extract(data: InputText):
@@ -69,7 +99,7 @@ Meeting text:
             task["created_at"] = datetime.now().isoformat()
         tasks_collection.insert_many(result["tasks"])
         for task in result["tasks"]:
-                task.pop("_id", None)
+            task.pop("_id", None)
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}\nRaw response: {raw}")
         result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
@@ -123,8 +153,12 @@ Meeting text:
             task["created_at"] = datetime.now().isoformat()
         tasks_collection.insert_many(result["tasks"])
         for task in result["tasks"]:
-             task.pop("_id", None)
+            task.pop("_id", None)
         result["transcript"] = transcript_text
         return result
     except Exception as e:
         return {"tasks": [], "summary": "", "error": str(e)}
+
+@app.on_event("shutdown")
+def shutdown():
+    scheduler.shutdown()
