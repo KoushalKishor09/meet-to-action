@@ -41,7 +41,6 @@ SUPPORTED_AUDIO_FORMATS = {
 }
 
 ALLOWED_EXTENSIONS = {ext for exts in SUPPORTED_AUDIO_FORMATS.values() for ext in exts}
-
 MAX_FILE_SIZE_MB = 50
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
@@ -58,11 +57,54 @@ def validate_audio_file(filename: str, content_type: str, file_size: int):
             status_code=415,
             detail=f"Unsupported file extension '{ext}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
         )
-    if content_type and content_type not in SUPPORTED_AUDIO_FORMATS:
-        raise HTTPException(
-            status_code=415,
-            detail=f"Unsupported MIME type '{content_type}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
-        )
+
+
+def build_extraction_prompt(text: str) -> str:
+    return f"""
+Analyze this meeting text and return a JSON object with two fields:
+1. "summary": A 2-3 sentence summary of the meeting
+2. "tasks": A list of tasks extracted from the meeting
+
+Return ONLY this JSON format:
+{{
+    "summary": "",
+    "tasks": [
+        {{"task": "", "owner": "", "deadline": ""}}
+    ]
+}}
+
+Rules:
+- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday" into actual dates like "April 5, 2026"
+- If no deadline mentioned, write "Not specified"
+- Owner should be the person responsible
+- Extract ALL tasks mentioned
+
+Meeting text:
+{text}
+"""
+
+
+def extract_tasks_from_text(text: str) -> dict:
+    prompt = build_extraction_prompt(text)
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    raw = response.choices[0].message.content
+    clean = re.sub(r"```json|```", "", raw).strip()
+    try:
+        result = json.loads(clean)
+        for task in result["tasks"]:
+            task["status"] = "Pending"
+            task["created_at"] = datetime.now().isoformat()
+        tasks_collection.delete_many({})
+        tasks_collection.insert_many(result["tasks"])
+        for task in result["tasks"]:
+            task.pop("_id", None)
+        return result
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}\nRaw response: {raw}")
+        return {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
 
 
 # APScheduler setup
@@ -108,49 +150,7 @@ def update_status(data: StatusUpdate):
 
 @app.post("/extract")
 def extract(data: InputText):
-    prompt = f"""
-Analyze this meeting text and return a JSON object with two fields:
-1. "summary": A 2-3 sentence summary of the meeting
-2. "tasks": A list of tasks extracted from the meeting
-
-Return ONLY this JSON format:
-{{
-    "summary": "",
-    "tasks": [
-        {{"task": "", "owner": "", "deadline": ""}}
-    ]
-}}
-
-Rules:
-- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday" into actual dates like "April 5, 2026"
-- If no deadline mentioned, write "Not specified"
-- Owner should be the person responsible
-- Extract ALL tasks mentioned
-
-Meeting text:
-{text}
-"""
-
-
-def extract_tasks_from_text(text: str) -> dict:
-    """Send meeting text to the LLM, parse the response, and persist tasks to MongoDB."""
-    prompt = build_extraction_prompt(text)
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    raw = response.choices[0].message.content
-    clean = re.sub(r"```json|```", "", raw).strip()
-    try:
-        result = json.loads(clean)
-        for task in result["tasks"]:
-            task["status"] = "Pending"
-            task["created_at"] = datetime.now().isoformat()
-        tasks_collection.delete_many({})
-        tasks_collection.insert_many(result["tasks"])
-    for task in result["tasks"]:
-        task.pop("_id", None)
-    return result
+    return extract_tasks_from_text(data.text)
 
 
 @app.get("/tasks")
@@ -165,7 +165,6 @@ async def extract_audio(file: UploadFile = File(...)):
 
     audio_bytes = await file.read()
     file_size = len(audio_bytes)
-
     print(f"📁 Received file: {file.filename}, size: {file_size / 1024:.1f} KB, MIME: {file.content_type}")
 
     if file_size > MAX_FILE_SIZE_BYTES:
@@ -187,43 +186,8 @@ async def extract_audio(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Failed to transcribe audio: {str(e)}")
 
-    prompt = f"""
-Analyze this meeting text and return a JSON object with two fields:
-1. "summary": A 2-3 sentence summary of the meeting
-2. "tasks": A list of tasks extracted from the meeting
-
-Return ONLY this JSON format:
-{{
-    "summary": "",
-    "tasks": [
-        {{"task": "", "owner": "", "deadline": ""}}
-    ]
-}}
-
-Rules:
-- If the transcript contains a meeting date, use that as reference to convert relative dates like "tomorrow", "Sunday" into actual dates like "April 5, 2026"
-- If no deadline mentioned, write "Not specified"
-- Owner should be the person responsible
-- Extract ALL tasks mentioned
-
-Meeting text:
-{transcript_text}
-"""
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        raw = response.choices[0].message.content
-        clean = re.sub(r"```json|```", "", raw).strip()
-        result = json.loads(clean)
-        for task in result["tasks"]:
-            task["status"] = "Pending"
-            task["created_at"] = datetime.now().isoformat()
-        tasks_collection.delete_many({})
-        tasks_collection.insert_many(result["tasks"])
-        for task in result["tasks"]:
-            task.pop("_id", None)
+        result = extract_tasks_from_text(transcript_text)
         result["transcript"] = transcript_text
         return result
     except json.JSONDecodeError as e:
