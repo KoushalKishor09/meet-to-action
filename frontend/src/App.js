@@ -2,6 +2,54 @@ import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
 
+const SUPPORTED_AUDIO_FORMATS = [
+  "audio/mpeg",       // MP3
+  "audio/mp4",        // M4A, M4B
+  "audio/x-m4a",      // M4A (alternate)
+  "audio/aac",        // AAC
+  "audio/ogg",        // OGG, OGA
+  "audio/wav",        // WAV
+  "audio/x-wav",      // WAV (alternate)
+  "audio/flac",       // FLAC
+  "audio/webm",       // WebM
+  "audio/x-ms-wma",  // WMA
+];
+
+const SUPPORTED_EXTENSIONS = ".mp3,.m4a,.m4b,.aac,.ogg,.oga,.wav,.flac,.webm,.wma";
+
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+function validateAudioFile(file) {
+  if (!file) return { valid: false, error: "No file selected." };
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is ${MAX_FILE_SIZE_MB} MB.`,
+    };
+  }
+
+  if (file.type && !SUPPORTED_AUDIO_FORMATS.includes(file.type)) {
+    return {
+      valid: false,
+      error: `Unsupported file type "${file.type}". Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA.`,
+    };
+  }
+
+  const lastDot = file.name.lastIndexOf(".");
+  const ext = lastDot !== -1 ? file.name.slice(lastDot + 1).toLowerCase() : "";
+  const allowedExt = SUPPORTED_EXTENSIONS.replace(/\./g, "").split(",");
+  if (!ext || !allowedExt.includes(ext)) {
+    return {
+      valid: false,
+      error: `Unsupported file extension${ext ? ` ".${ext}"` : ""}. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA.`,
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
@@ -73,7 +121,15 @@ function App() {
 
   const handleAudioUpload = async (file) => {
     if (!file) return;
+
+    const validation = validateAudioFile(file);
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+
     setAudioFile(file);
+    setError("");
     setAudioProcessing(true);
     const formData = new FormData();
     formData.append("file", file);
@@ -93,7 +149,7 @@ function App() {
         setSummary(data.summary || "");
       }
     } catch (err) {
-      setError("Failed to process the audio file. Please try again.");
+      setError("Failed to connect to the server. Please ensure the backend is running.");
       setTasks([]);
     }
     setAudioProcessing(false);
@@ -297,7 +353,7 @@ function App() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="audio/*"
+                accept={SUPPORTED_EXTENSIONS}
                 className="file-input-hidden"
                 onChange={handleFileChange}
                 aria-label="Audio file input"
@@ -320,7 +376,7 @@ function App() {
                     Drag &amp; drop your audio file here
                   </p>
                   <p className="drop-zone-hint">
-                    or click to browse — MP3, WAV, M4A supported
+                    or click to browse — MP3, M4A, AAC, OGG, WAV, FLAC, WebM supported
                   </p>
                 </div>
               )}
@@ -498,3 +554,4 @@ function App() {
 }
 
 export default App;
+export { validateAudioFile, SUPPORTED_AUDIO_FORMATS, SUPPORTED_EXTENSIONS };
