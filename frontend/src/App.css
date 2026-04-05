@@ -13,6 +13,7 @@ body {
   background: linear-gradient(135deg, #f0f4ff 0%, #fafbff 60%, #eef6ff 100%);
   min-height: 100vh;
   color: #1e293b;
+  scroll-behavior: smooth;
 }
 
 /* ── App Container ── */
