@@ -13,6 +13,7 @@ function App() {
   const [dragOver, setDragOver] = useState(false);
   const [audioProcessing, setAudioProcessing] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [viewMode, setViewMode] = useState("table");
   const fileInputRef = useRef(null);
   const resultsRef = useRef(null);
   const exportMenuRef = useRef(null);
@@ -385,40 +386,51 @@ function App() {
         <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <div className="export-dropdown" ref={exportMenuRef}>
+            <div className="header-actions">
               <button
-                className="export-btn"
-                onClick={() => setShowExportMenu((prev) => !prev)}
-                aria-haspopup="true"
-                aria-expanded={showExportMenu}
-                aria-label="Export"
+                className={`view-toggle-btn${viewMode === "tiles" ? " view-toggle-btn--active" : ""}`}
+                onClick={() => setViewMode(viewMode === "table" ? "tiles" : "table")}
+                aria-label={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
+                title={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
               >
-                ⬇️ Export
+                {viewMode === "table" ? "⊞ Tiles View" : "≡ Table View"}
               </button>
-              {showExportMenu && (
-                <ul className="export-menu" role="menu">
-                  <li role="none">
-                    <button
-                      role="menuitem"
-                      className="export-menu-item"
-                      onClick={() => { exportJSON(); setShowExportMenu(false); }}
-                    >
-                      📄 Export JSON
-                    </button>
-                  </li>
-                  <li role="none">
-                    <button
-                      role="menuitem"
-                      className="export-menu-item"
-                      onClick={() => { exportPDF(); setShowExportMenu(false); }}
-                    >
-                      🖨️ Export as PDF
-                    </button>
-                  </li>
-                </ul>
-              )}
+              <div className="export-dropdown" ref={exportMenuRef}>
+                <button
+                  className="export-btn"
+                  onClick={() => setShowExportMenu((prev) => !prev)}
+                  aria-haspopup="true"
+                  aria-expanded={showExportMenu}
+                  aria-label="Export"
+                >
+                  ⬇️ Export
+                </button>
+                {showExportMenu && (
+                  <ul className="export-menu" role="menu">
+                    <li role="none">
+                      <button
+                        role="menuitem"
+                        className="export-menu-item"
+                        onClick={() => { exportJSON(); setShowExportMenu(false); }}
+                      >
+                        📄 Export JSON
+                      </button>
+                    </li>
+                    <li role="none">
+                      <button
+                        role="menuitem"
+                        className="export-menu-item"
+                        onClick={() => { exportPDF(); setShowExportMenu(false); }}
+                      >
+                        🖨️ Export as PDF
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
+          {viewMode === "table" ? (
           <div className="table-wrapper">
             <table className="tasks-table">
               <thead>
@@ -451,6 +463,34 @@ function App() {
               </tbody>
             </table>
           </div>
+          ) : (
+          <div className="tiles-grid">
+            {tasks.map((t, i) => (
+              <div key={i} className={`task-tile${t.status === "Done" ? " task-tile--done" : ""}`}>
+                <div className="task-tile-number">{i + 1}</div>
+                <h4 className="task-tile-title">{t.task}</h4>
+                <div className="task-tile-meta">
+                  <span className="task-tile-label">👤 Owner</span>
+                  <span className="task-tile-value">{t.owner || "—"}</span>
+                </div>
+                <div className="task-tile-meta">
+                  <span className="task-tile-label">📅 Deadline</span>
+                  <span className="task-tile-value">{t.deadline || "—"}</span>
+                </div>
+                <div className="task-tile-footer">
+                  <span
+                    className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                    onClick={() => toggleStatus(i)}
+                    style={{ cursor: "pointer" }}
+                    title="Click to toggle status"
+                  >
+                    {t.status || "Pending"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          )}
         </section>
       )}
     </div>
