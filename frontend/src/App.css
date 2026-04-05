@@ -382,6 +382,40 @@ body {
   color: #1e293b;
 }
 
+.export-dropdown {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 170px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  z-index: 5;
+  padding: 6px;
+}
+
+.export-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.export-menu-item:hover {
+  background: #f1f5f9;
+}
+
 /* ── Tasks Table ── */
 .table-wrapper {
   overflow-x: auto;
@@ -459,4 +493,3 @@ body {
     grid-template-columns: 1fr;
   }
 }
-
