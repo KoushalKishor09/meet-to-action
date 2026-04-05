@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
 
@@ -14,6 +14,27 @@ function App() {
   const [audioProcessing, setAudioProcessing] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const exportDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [exportMenuOpen]);
 
   const extractTasks = async () => {
     setLoading(true);
@@ -372,7 +393,7 @@ function App() {
         <section className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <div className="export-dropdown">
+            <div className="export-dropdown" ref={exportDropdownRef}>
               <button
                 className="export-btn"
                 onClick={() => setExportMenuOpen((open) => !open)}
