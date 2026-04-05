@@ -6,6 +6,8 @@ from groq import Groq
 from pymongo import MongoClient
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+from pydub import AudioSegment
+import io
 import os
 import json
 import re
@@ -42,6 +44,10 @@ SUPPORTED_AUDIO_FORMATS = {
 
 ALLOWED_EXTENSIONS = {ext for exts in SUPPORTED_AUDIO_FORMATS.values() for ext in exts}
 
+# AAC formats that require conversion before sending to Whisper
+AAC_EXTENSIONS = {".aac", ".m4a", ".m4b"}
+AAC_MIME_TYPES = {"audio/aac", "audio/mp4", "audio/x-m4a"}
+
 MAX_FILE_SIZE_MB = 50
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
@@ -66,6 +72,33 @@ def validate_audio_file(filename: str, content_type: str, file_size: int):
             status_code=415,
             detail=f"Unsupported MIME type '{content_type}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
         )
+
+def needs_aac_conversion(filename: str, content_type: str) -> bool:
+    """Return True when the file is an AAC-based format that must be converted before transcription."""
+    ext = os.path.splitext(filename)[1].lower()
+    return ext in AAC_EXTENSIONS or (bool(content_type) and content_type in AAC_MIME_TYPES)
+
+def convert_aac_to_wav(audio_bytes: bytes, original_filename: str) -> tuple:
+    """Convert AAC/M4A audio bytes to WAV format using pydub (requires ffmpeg).
+
+    Returns a (wav_bytes, new_filename) tuple so callers can use the converted
+    data while still preserving the original filename for the response.
+    """
+    ext = os.path.splitext(original_filename)[1].lower()
+    base_name = os.path.splitext(original_filename)[0]
+    fmt_map = {".aac": "aac", ".m4a": "m4a", ".m4b": "m4a"}
+    fmt = fmt_map.get(ext, "m4a")
+
+    audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format=fmt)
+
+    wav_buffer = io.BytesIO()
+    audio.export(wav_buffer, format="wav")
+    wav_buffer.seek(0)
+
+    # The converted filename is used only for the Whisper API call;
+    # the original filename is kept for logging and the user-facing response.
+    new_filename = base_name + ".wav"
+    return wav_buffer.read(), new_filename
 
 # APScheduler setup
 scheduler = BackgroundScheduler()
@@ -168,9 +201,25 @@ async def extract_audio(file: UploadFile = File(...)):
             detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
         )
 
+    # Convert AAC/M4A to WAV before transcription (Whisper may reject certain AAC encodings)
+    transcription_bytes = audio_bytes
+    transcription_filename = file.filename
+
+    if needs_aac_conversion(file.filename, file.content_type):
+        try:
+            print(f"🔄 Converting AAC audio to WAV: {file.filename}")
+            transcription_bytes, transcription_filename = convert_aac_to_wav(audio_bytes, file.filename)
+            print(f"✅ Conversion successful: {transcription_filename} ({len(transcription_bytes) / 1024:.1f} KB)")
+        except Exception as e:
+            print(f"❌ AAC conversion failed: {e}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to convert AAC audio: {str(e)}. Please ensure ffmpeg is installed on the server."
+            )
+
     try:
         transcription = client.audio.transcriptions.create(
-            file=(file.filename, audio_bytes),
+            file=(transcription_filename, transcription_bytes),
             model="whisper-large-v3",
         )
         transcript_text = transcription.text
