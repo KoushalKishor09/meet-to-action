@@ -26,17 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Supported audio formats: MIME type -> list of valid extensions
+# Supported audio formats
 SUPPORTED_AUDIO_FORMATS = {
-    "audio/mpeg":    [".mp3"],
-    "audio/mp4":     [".m4a", ".m4b"],
-    "audio/x-m4a":   [".m4a"],
-    "audio/aac":     [".aac"],
-    "audio/ogg":     [".ogg", ".oga"],
-    "audio/wav":     [".wav"],
-    "audio/x-wav":   [".wav"],
-    "audio/flac":    [".flac"],
-    "audio/webm":    [".webm"],
+    "audio/mpeg":     [".mp3"],
+    "audio/mp4":      [".m4a", ".m4b"],
+    "audio/x-m4a":    [".m4a"],
+    "audio/aac":      [".aac"],
+    "audio/ogg":      [".ogg", ".oga"],
+    "audio/wav":      [".wav"],
+    "audio/x-wav":    [".wav"],
+    "audio/flac":     [".flac"],
+    "audio/webm":     [".webm"],
     "audio/x-ms-wma": [".wma"],
 }
 
@@ -47,25 +47,23 @@ MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
 def validate_audio_file(filename: str, content_type: str, file_size: int):
-    """Validate uploaded audio file for size (if > 0), extension, and MIME type."""
     if file_size > 0 and file_size > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=413,
             detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
         )
-
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=415,
             detail=f"Unsupported file extension '{ext}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
         )
-
     if content_type and content_type not in SUPPORTED_AUDIO_FORMATS:
         raise HTTPException(
             status_code=415,
             detail=f"Unsupported MIME type '{content_type}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
         )
+
 
 # APScheduler setup
 scheduler = BackgroundScheduler()
@@ -79,21 +77,25 @@ def check_deadlines():
 scheduler.add_job(check_deadlines, "interval", minutes=1)
 scheduler.start()
 
+
 class InputText(BaseModel):
     text: str
+
+class StatusUpdate(BaseModel):
+    task: str
+    status: str
+
 
 @app.get("/")
 def home():
     return {"message": "Backend is running 🚀"}
+
 
 @app.get("/reminders")
 def get_reminders():
     tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
     return {"pending_tasks": tasks, "count": len(tasks)}
 
-class StatusUpdate(BaseModel):
-    task: str
-    status: str
 
 @app.post("/update-status")
 def update_status(data: StatusUpdate):
@@ -102,6 +104,7 @@ def update_status(data: StatusUpdate):
         {"$set": {"status": data.status}}
     )
     return {"message": "Status updated"}
+
 
 @app.post("/extract")
 def extract(data: InputText):
@@ -138,6 +141,7 @@ Meeting text:
         for task in result["tasks"]:
             task["status"] = "Pending"
             task["created_at"] = datetime.now().isoformat()
+        tasks_collection.delete_many({})
         tasks_collection.insert_many(result["tasks"])
         for task in result["tasks"]:
             task.pop("_id", None)
@@ -146,17 +150,17 @@ Meeting text:
         result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
     return result
 
+
 @app.get("/tasks")
 def get_tasks():
     tasks = list(tasks_collection.find({}, {"_id": 0}))
     return {"tasks": tasks}
 
+
 @app.post("/extract-audio")
 async def extract_audio(file: UploadFile = File(...)):
-    # Validate extension and MIME type before reading the full file body
     validate_audio_file(file.filename, file.content_type, 0)
 
-    # Read file and enforce size limit
     audio_bytes = await file.read()
     file_size = len(audio_bytes)
 
@@ -214,6 +218,7 @@ Meeting text:
         for task in result["tasks"]:
             task["status"] = "Pending"
             task["created_at"] = datetime.now().isoformat()
+        tasks_collection.delete_many({})
         tasks_collection.insert_many(result["tasks"])
         for task in result["tasks"]:
             task.pop("_id", None)
@@ -224,6 +229,7 @@ Meeting text:
         raise HTTPException(status_code=500, detail="Could not parse the AI response. Please try again.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Task extraction failed: {str(e)}")
+
 
 @app.on_event("shutdown")
 def shutdown():
