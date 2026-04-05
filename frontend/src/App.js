@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
 
@@ -12,7 +12,29 @@ function App() {
   const [audioFile, setAudioFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [audioProcessing, setAudioProcessing] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const exportDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [exportMenuOpen]);
 
   const extractTasks = async () => {
     setLoading(true);
@@ -175,6 +197,7 @@ function App() {
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     doc.save(`meeting-summary-${timestamp}.pdf`);
+    setExportMenuOpen(false);
   };
 
   const exportJSON = () => {
@@ -187,6 +210,7 @@ function App() {
     a.download = "tasks.json";
     a.click();
     URL.revokeObjectURL(url);
+    setExportMenuOpen(false);
   };
 
   return (
@@ -369,12 +393,26 @@ function App() {
         <section className="results-section" aria-label="Extracted tasks">
           <div className="results-header">
             <h2 className="results-title">Extracted Tasks</h2>
-            <button className="export-btn" onClick={exportJSON}>
-              ⬇️ Export JSON
-            </button>
-            <button className="export-btn" onClick={exportPDF} style={{ marginLeft: "8px" }}>
-              📄 Export as PDF
-            </button>
+            <div className="export-dropdown" ref={exportDropdownRef}>
+              <button
+                className="export-btn"
+                onClick={() => setExportMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={exportMenuOpen}
+              >
+                ⬇️ Export
+              </button>
+              {exportMenuOpen && (
+                <div className="export-menu" role="menu">
+                  <button className="export-menu-item" role="menuitem" onClick={exportJSON}>
+                    ⬇️ Export JSON
+                  </button>
+                  <button className="export-menu-item" role="menuitem" onClick={exportPDF}>
+                    📄 Export as PDF
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="table-wrapper">
             <table className="tasks-table">
