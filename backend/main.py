@@ -3,12 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from groq import Groq
+from pymongo import MongoClient
+from datetime import datetime
 import os
 import json
 import re
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+mongo_client = MongoClient(os.getenv("MONGO_URI"))
+db = mongo_client["meettask"]
+tasks_collection = db["tasks"]
 
 app = FastAPI()
 
@@ -58,10 +64,19 @@ Meeting text:
     clean = re.sub(r"```json|```", "", raw).strip()
     try:
         result = json.loads(clean)
+        for task in result["tasks"]:
+            task["status"] = "Pending"
+            task["created_at"] = datetime.now().isoformat()
+        tasks_collection.insert_many(result["tasks"])
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}\nRaw response: {raw}")
         result = {"tasks": [], "summary": "", "error": "Could not parse the AI response. Please try again."}
     return result
+
+@app.get("/tasks")
+def get_tasks():
+    tasks = list(tasks_collection.find({}, {"_id": 0}))
+    return {"tasks": tasks}
 
 @app.post("/extract-audio")
 async def extract_audio(file: UploadFile = File(...)):
@@ -101,6 +116,10 @@ Meeting text:
         raw = response.choices[0].message.content
         clean = re.sub(r"```json|```", "", raw).strip()
         result = json.loads(clean)
+        for task in result["tasks"]:
+            task["status"] = "Pending"
+            task["created_at"] = datetime.now().isoformat()
+        tasks_collection.insert_many(result["tasks"])
         result["transcript"] = transcript_text
         return result
     except Exception as e:
