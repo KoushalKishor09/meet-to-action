@@ -1,32 +1,32 @@
 function AboutPage() {
   const teamMembers = [
     {
-      name: "Koushal Kishor",
-      role: "Project Lead",
-      linkedin: "",
-      email: "",
+      name: "Rounak Kumar Mahto",
+      role: "Team Leader, Frontend Designer, Representor",
+      linkedin: "https://www.linkedin.com/in/rounak-kumar-mahto/",
+      email: "rounak.k.mahto@gmail.com",
+      github: "https://github.com/thechamprk"
+    },
+    {
+      name: "Khushi Kumari",
+      role: "UI/UX Designer",
+      linkedin: "https://www.linkedin.com/in/khushi-kumari-654617325/",
+      email: "khushi.ece.rec@gmail.com",
+      github: "https://github.com/its-kittu"
+    },
+    {
+      name: "Koushal Kishor Vishwakarma",
+      role: "Backend Designer, Representor",
+      linkedin: "https://www.linkedin.com/in/koushal-kishor-vishwakarma-206567363/",
+      email: "kishorkoushal995@gmail.com",
       github: "https://github.com/KoushalKishor09"
     },
     {
-      name: "Team Member 2",
-      role: "Frontend Developer",
-      linkedin: "",
-      email: "",
-      github: ""
-    },
-    {
-      name: "Team Member 3",
-      role: "Backend Developer",
-      linkedin: "",
-      email: "",
-      github: ""
-    },
-    {
-      name: "Team Member 4",
-      role: "AI/ML Engineer",
-      linkedin: "",
-      email: "",
-      github: ""
+      name: "Saba Alam",
+      role: "UI/UX Designer",
+      linkedin: "https://www.linkedin.com/in/saba-alam-83a23834a/",
+      email: "alamsaba2006@gmail.com",
+      github: "https://github.com/alamsaba2006-hub"
     }
   ];
 
