@@ -1,5 +1,7 @@
 /* ── CSS Variables (Light Mode) ── */
 :root {
+  /* Change this to update only index page card fonts. */
+  --index-card-font: "Poppins", "Segoe UI", Arial, sans-serif;
   --bg: linear-gradient(135deg, #f0f4ff 0%, #fafbff 60%, #eef6ff 100%);
   --bg-solid: #f0f4ff;
   --card-bg: #ffffff;
@@ -449,6 +451,7 @@ body {
   border-radius: 14px;
   padding: 24px 22px;
   box-shadow: var(--card-shadow);
+  font-family: var(--index-card-font);
   transition: transform 0.2s, box-shadow 0.2s, background 0.3s ease;
 }
 
@@ -495,6 +498,7 @@ body {
 .feature-title {
   font-size: 15px;
   font-weight: 700;
+  font-family: var(--index-card-font);
   color: var(--text-primary);
   margin-bottom: 6px;
   transition: color 0.3s ease;
@@ -502,6 +506,7 @@ body {
 
 .feature-desc {
   font-size: 13px;
+  font-family: var(--index-card-font);
   color: var(--text-muted);
   line-height: 1.6;
   transition: color 0.3s ease;
@@ -731,6 +736,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px 16px 14px;
+  font-family: var(--index-card-font);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s, box-shadow 0.2s, background 0.3s ease, border-color 0.3s ease;
   display: flex;
@@ -751,6 +757,7 @@ body {
 .task-tile-number {
   font-size: 12px;
   font-weight: 700;
+  font-family: var(--index-card-font);
   color: var(--text-subtle);
   width: 24px;
   height: 24px;
@@ -765,6 +772,7 @@ body {
 .task-tile-title {
   font-size: 14px;
   font-weight: 700;
+  font-family: var(--index-card-font);
   color: var(--text-primary);
   line-height: 1.4;
   transition: color 0.3s ease;
@@ -781,12 +789,14 @@ body {
   color: var(--task-tile-label-color);
   font-size: 12px;
   font-weight: 600;
+  font-family: var(--index-card-font);
   min-width: 70px;
   transition: color 0.3s ease;
 }
 
 .task-tile-value {
   color: var(--task-tile-value-color);
+  font-family: var(--index-card-font);
   font-weight: 500;
   transition: color 0.3s ease;
 }
@@ -1056,6 +1066,14 @@ body {
 
 .team-section-title {
   margin-bottom: 8px;
+}
+
+.team-credits {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 
 .team-section-subtitle {

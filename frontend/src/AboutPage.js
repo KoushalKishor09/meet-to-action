@@ -51,6 +51,7 @@ function AboutPage() {
       <section className="team-section" aria-label="Team contributors">
         <div className="team-section-head">
           <h3 className="about-page-title team-section-title">Team Contributors</h3>
+          <p className="team-credits">Created with 💖 by our team 'CodeXCrew'</p>
           <p className="about-page-text team-section-subtitle">
             The people who built and contributed to making this website strong.
           </p>
