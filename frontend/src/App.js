@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
+import { useTheme } from "./useTheme";
 
 const SUPPORTED_AUDIO_FORMATS = [
   "audio/mpeg",       // MP3
@@ -51,6 +52,7 @@ function validateAudioFile(file) {
 }
 
 function App() {
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -263,7 +265,7 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container" data-theme={theme}>
       {/* Header */}
       <header className="app-header">
         <span className="ai-badge">✨ AI-Powered</span>
@@ -271,6 +273,14 @@ function App() {
         <p className="app-subtitle">
           Convert meeting recordings and transcripts into actionable tasks
         </p>
+        <button
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+        >
+          {theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+        </button>
       </header>
 
       {/* Main Card */}
@@ -397,7 +407,7 @@ function App() {
 
       {/* Error Message */}
       {error && (
-        <div role="alert" style={{ margin: "0 0 24px", padding: "14px 20px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "10px", color: "#b91c1c", fontSize: "14px" }}>
+        <div role="alert" style={{ margin: "0 0 24px", padding: "14px 20px", background: "var(--color-error-bg)", border: "1px solid var(--color-error-border)", borderRadius: "10px", color: "var(--color-error-text)", fontSize: "14px" }}>
           ⚠️ {error}
         </div>
       )}
@@ -433,7 +443,7 @@ function App() {
           <div className="results-header">
             <h2 className="results-title">Meeting Summary</h2>
           </div>
-          <p style={{ padding: "16px 24px", fontSize: "14px", color: "#1e293b", lineHeight: "1.6" }}>{summary}</p>
+          <p style={{ padding: "16px 24px", fontSize: "14px", color: "var(--color-summary-text)", lineHeight: "1.6" }}>{summary}</p>
         </section>
       )}
 
@@ -500,7 +510,7 @@ function App() {
               </thead>
               <tbody>
                 {tasks.map((t, i) => (
-                  <tr key={i} style={{ background: t.status === "Done" ? "#d4edda" : "white" }}>
+                  <tr key={i} style={{ background: t.status === "Done" ? "var(--color-tr-done)" : "transparent" }}>
                     <td className="task-num">{i + 1}</td>
                     <td>{t.task}</td>
                     <td>{t.owner}</td>

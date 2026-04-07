@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { validateAudioFile, SUPPORTED_AUDIO_FORMATS, SUPPORTED_EXTENSIONS } from './App';
+import { ThemeProvider } from './ThemeContext';
+
+function renderWithTheme(ui) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 test('renders the AI-Powered badge', () => {
   render(<App />);
@@ -191,4 +196,40 @@ test('drop zone shows all supported formats hint after switching to audio tab', 
   expect(hint.textContent).toMatch(/WAV/i);
   expect(hint.textContent).toMatch(/FLAC/i);
   expect(hint.textContent).toMatch(/WebM/i);
+});
+
+// --- Theme toggle tests ---
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+test('renders the theme toggle button', () => {
+  renderWithTheme(<App />);
+  expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeInTheDocument();
+});
+
+test('theme toggle button switches between light and dark mode labels', async () => {
+  renderWithTheme(<App />);
+  const toggleBtn = screen.getByRole('button', { name: /switch to dark mode/i });
+  expect(toggleBtn).toHaveTextContent(/Dark Mode/i);
+
+  await userEvent.click(toggleBtn);
+
+  expect(screen.getByRole('button', { name: /switch to light mode/i })).toHaveTextContent(/Light Mode/i);
+});
+
+test('theme toggle button persists preference in localStorage', async () => {
+  renderWithTheme(<App />);
+  await userEvent.click(screen.getByRole('button', { name: /switch to dark mode/i }));
+  expect(localStorage.getItem('theme')).toBe('dark');
+
+  await userEvent.click(screen.getByRole('button', { name: /switch to light mode/i }));
+  expect(localStorage.getItem('theme')).toBe('light');
+});
+
+test('ThemeProvider reads stored theme from localStorage', () => {
+  localStorage.setItem('theme', 'dark');
+  renderWithTheme(<App />);
+  expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeInTheDocument();
 });
