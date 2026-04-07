@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
+import { useTheme } from "./useTheme";
 
 const SUPPORTED_AUDIO_FORMATS = [
   "audio/mpeg",       // MP3
@@ -51,6 +52,7 @@ function validateAudioFile(file) {
 }
 
 function App() {
+  const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -264,6 +266,16 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* Theme Toggle Button - fixed top-right */}
+      <button
+        className="theme-toggle-btn"
+        onClick={toggleTheme}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {isDark ? "☀️" : "🌙"}
+      </button>
+
       {/* Header */}
       <header className="app-header">
         <span className="ai-badge">✨ AI-Powered</span>
@@ -397,7 +409,7 @@ function App() {
 
       {/* Error Message */}
       {error && (
-        <div role="alert" style={{ margin: "0 0 24px", padding: "14px 20px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "10px", color: "#b91c1c", fontSize: "14px" }}>
+        <div role="alert" className="error-alert">
           ⚠️ {error}
         </div>
       )}
@@ -433,7 +445,7 @@ function App() {
           <div className="results-header">
             <h2 className="results-title">Meeting Summary</h2>
           </div>
-          <p style={{ padding: "16px 24px", fontSize: "14px", color: "#1e293b", lineHeight: "1.6" }}>{summary}</p>
+          <p className="summary-text">{summary}</p>
         </section>
       )}
 
@@ -500,7 +512,7 @@ function App() {
               </thead>
               <tbody>
                 {tasks.map((t, i) => (
-                  <tr key={i} style={{ background: t.status === "Done" ? "#d4edda" : "white" }}>
+                  <tr key={i} className={t.status === "Done" ? "task-row--done" : ""}>
                     <td className="task-num">{i + 1}</td>
                     <td>{t.task}</td>
                     <td>{t.owner}</td>

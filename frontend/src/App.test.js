@@ -1,48 +1,51 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { validateAudioFile, SUPPORTED_AUDIO_FORMATS, SUPPORTED_EXTENSIONS } from './App';
+import { ThemeProvider } from './ThemeContext';
+
+const renderApp = () => render(<ThemeProvider><App /></ThemeProvider>);
 
 test('renders the AI-Powered badge', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByText(/AI-Powered/i)).toBeInTheDocument();
 });
 
 test('renders the app title "Meet to Action"', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByRole('heading', { name: /Meet to Action/i })).toBeInTheDocument();
 });
 
 test('renders Text Input and Audio Upload tabs', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByRole('tab', { name: /Text Input/i })).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: /Audio Upload/i })).toBeInTheDocument();
 });
 
 test('text input panel is shown by default', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByRole('textbox', { name: /Meeting text input/i })).toBeInTheDocument();
 });
 
 test('Extract Tasks button is disabled when textarea is empty', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByRole('button', { name: /Extract Tasks/i })).toBeDisabled();
 });
 
 test('Extract Tasks button is enabled after typing', async () => {
-  render(<App />);
+  renderApp();
   const textarea = screen.getByRole('textbox', { name: /Meeting text input/i });
   await userEvent.type(textarea, 'Alice will prepare the report by Friday.');
   expect(screen.getByRole('button', { name: /Extract Tasks/i })).toBeEnabled();
 });
 
 test('switching to Audio Upload tab shows the drop zone', async () => {
-  render(<App />);
+  renderApp();
   await userEvent.click(screen.getByRole('tab', { name: /Audio Upload/i }));
   expect(screen.getByRole('button', { name: /Audio file drop zone/i })).toBeInTheDocument();
 });
 
 test('renders the three feature cards', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByText(/Smart Extraction/i)).toBeInTheDocument();
   expect(screen.getByText(/Structured Output/i)).toBeInTheDocument();
   expect(screen.getByText(/Easy Export/i)).toBeInTheDocument();
@@ -59,7 +62,7 @@ test('shows export dropdown options after extracting tasks', async () => {
     })
   );
 
-  render(<App />);
+  renderApp();
   const textarea = screen.getByRole('textbox', { name: /Meeting text input/i });
   await userEvent.type(textarea, 'Alice will prepare the report by Friday.');
   await userEvent.click(screen.getByRole('button', { name: /Extract Tasks/i }));
@@ -82,7 +85,7 @@ test('closes export dropdown on Escape key and outside click', async () => {
     })
   );
 
-  render(<App />);
+  renderApp();
   const textarea = screen.getByRole('textbox', { name: /Meeting text input/i });
   await userEvent.type(textarea, 'Alice will prepare the report by Friday.');
   await userEvent.click(screen.getByRole('button', { name: /Extract Tasks/i }));
@@ -180,7 +183,7 @@ test('SUPPORTED_EXTENSIONS includes all required extensions', () => {
 });
 
 test('drop zone shows all supported formats hint after switching to audio tab', async () => {
-  render(<App />);
+  renderApp();
   await userEvent.click(screen.getByRole('tab', { name: /Audio Upload/i }));
   const hint = screen.getByText(/or click to browse/i);
   expect(hint).toBeInTheDocument();
@@ -192,3 +195,19 @@ test('drop zone shows all supported formats hint after switching to audio tab', 
   expect(hint.textContent).toMatch(/FLAC/i);
   expect(hint.textContent).toMatch(/WebM/i);
 });
+
+test('theme toggle button is rendered with moon icon by default', () => {
+  renderApp();
+  const toggleBtn = screen.getByRole('button', { name: /Switch to dark mode/i });
+  expect(toggleBtn).toBeInTheDocument();
+  expect(toggleBtn.textContent).toBe('🌙');
+});
+
+test('theme toggle button switches icon when clicked', async () => {
+  renderApp();
+  const toggleBtn = screen.getByRole('button', { name: /Switch to dark mode/i });
+  await userEvent.click(toggleBtn);
+  expect(screen.getByRole('button', { name: /Switch to light mode/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Switch to light mode/i }).textContent).toBe('☀️');
+});
+
