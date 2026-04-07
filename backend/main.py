@@ -1,11 +1,13 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from groq import Groq
 from pymongo import MongoClient
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+from pathlib import Path
 import os
 import json
 import re
@@ -30,15 +32,15 @@ app.add_middleware(
 
 # Supported audio formats
 SUPPORTED_AUDIO_FORMATS = {
-    "audio/mpeg":     [".mp3"],
-    "audio/mp4":      [".m4a", ".m4b"],
-    "audio/x-m4a":    [".m4a"],
-    "audio/aac":      [".aac"],
-    "audio/ogg":      [".ogg", ".oga"],
-    "audio/wav":      [".wav"],
-    "audio/x-wav":    [".wav"],
-    "audio/flac":     [".flac"],
-    "audio/webm":     [".webm"],
+    "audio/mpeg": [".mp3"],
+    "audio/mp4": [".m4a", ".m4b"],
+    "audio/x-m4a": [".m4a"],
+    "audio/aac": [".aac"],
+    "audio/ogg": [".ogg", ".oga"],
+    "audio/wav": [".wav"],
+    "audio/x-wav": [".wav"],
+    "audio/flac": [".flac"],
+    "audio/webm": [".webm"],
     "audio/x-ms-wma": [".wma"],
 }
 
@@ -51,13 +53,14 @@ def validate_audio_file(filename: str, content_type: str, file_size: int):
     if file_size > 0 and file_size > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
+            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB.",
         )
+
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=415,
-            detail=f"Unsupported file extension '{ext}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA."
+            detail=f"Unsupported file extension '{ext}'. Supported formats: MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA.",
         )
 
 
@@ -90,19 +93,25 @@ def extract_tasks_from_text(text: str) -> dict:
     prompt = build_extraction_prompt(text)
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
     )
+
     raw = response.choices[0].message.content
     clean = re.sub(r"```json|```", "", raw).strip()
+
     try:
         result = json.loads(clean)
-        for task in result["tasks"]:
+        for task in result.get("tasks", []):
             task["status"] = "Pending"
             task["created_at"] = datetime.now().isoformat()
+
         tasks_collection.delete_many({})
-        tasks_collection.insert_many(result["tasks"])
-        for task in result["tasks"]:
+        if result.get("tasks"):
+            tasks_collection.insert_many(result["tasks"])
+
+        for task in result.get("tasks", []):
             task.pop("_id", None)
+
         return result
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}\nRaw response: {raw}")
@@ -116,7 +125,7 @@ async def send_telegram_message(message: str):
         await bot.send_message(
             chat_id=os.getenv("TELEGRAM_CHAT_ID"),
             text=message,
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
     except Exception as e:
         print(f"Telegram error: {e}")
@@ -126,15 +135,19 @@ async def send_telegram_message(message: str):
 def check_deadlines():
     print("\n🔔 Checking deadlines...")
     tasks = list(tasks_collection.find({"status": "Pending"}, {"_id": 0}))
+
     if not tasks:
         print("✅ No pending tasks right now!")
     else:
         message = "🔔 <b>Pending Task Reminders</b>\n\n"
         for task in tasks:
-            print(f"⚠️ Pending Task: {task['task']} | Owner: {task['owner']} | Deadline: {task['deadline']}")
-            message += f"⚠️ <b>Task:</b> {task['task']}\n"
-            message += f"👤 <b>Owner:</b> {task['owner']}\n"
-            message += f"📅 <b>Deadline:</b> {task['deadline']}\n\n"
+            print(
+                f"⚠️ Pending Task: {task.get('task')} | Owner: {task.get('owner')} | Deadline: {task.get('deadline')}"
+            )
+            message += f"⚠️ <b>Task:</b> {task.get('task', 'N/A')}\n"
+            message += f"👤 <b>Owner:</b> {task.get('owner', 'N/A')}\n"
+            message += f"📅 <b>Deadline:</b> {task.get('deadline', 'N/A')}\n\n"
+
         asyncio.run(send_telegram_message(message))
     print("")
 
@@ -149,6 +162,7 @@ if not os.environ.get("RUN_MAIN"):
 class InputText(BaseModel):
     text: str
 
+
 class StatusUpdate(BaseModel):
     task: str
     status: str
@@ -157,6 +171,15 @@ class StatusUpdate(BaseModel):
 @app.get("/")
 def home():
     return {"message": "Backend is running 🚀"}
+
+
+# Fix favicon 404 noise in browser
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    icon_path = Path(__file__).parent / "favicon.ico"
+    if icon_path.exists():
+        return FileResponse(icon_path)
+    return Response(status_code=204)
 
 
 @app.get("/reminders")
@@ -169,7 +192,7 @@ def get_reminders():
 def update_status(data: StatusUpdate):
     result = tasks_collection.update_one(
         {"task": data.task},
-        {"$set": {"status": data.status}}
+        {"$set": {"status": data.status}},
     )
     if result.matched_count == 0:
         return {"message": "Task not found", "success": False}
@@ -198,7 +221,7 @@ async def extract_audio(file: UploadFile = File(...)):
     if file_size > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
+            detail=f"File too large ({file_size / 1024 / 1024:.1f} MB). Maximum allowed size is {MAX_FILE_SIZE_MB} MB.",
         )
 
     try:
