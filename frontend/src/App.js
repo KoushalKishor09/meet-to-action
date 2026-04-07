@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
 import { useTheme } from "./useTheme";
+import Navbar from "./Navbar";
+import AboutPage from "./AboutPage";
 
 const SUPPORTED_AUDIO_FORMATS = [
   "audio/mpeg",
@@ -48,6 +50,8 @@ function validateAudioFile(file) {
 
 function App() {
   const { isDark, toggleTheme } = useTheme();
+  const [activeNav, setActiveNav] = useState("home");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -87,8 +91,6 @@ function App() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showExportMenu]);
-
-  const closeMobileMenu = () => setMenuOpen(false);
 
   const extractTasks = async () => {
     setLoading(true);
@@ -251,47 +253,15 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      {/* Theme Toggle Button - fixed top-right */}
-      <button
-        className="theme-toggle-btn"
-        onClick={toggleTheme}
-        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {isDark ? "☀️" : "🌙"}
-      </button>
+    <>
+      <Navbar
+        activeNav={activeNav}
+        setActiveNav={setActiveNav}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+      />
 
-      {/* Header */}
-      <header className="app-header">
-        <span className="ai-badge">✨ AI-Powered</span>
-        <h1 className="app-title">Meet to Action</h1>
-        <p className="app-subtitle">
-          Convert meeting recordings and transcripts into actionable tasks
-        </p>
-      </header>
-
-      {/* Main Card */}
-      <main className="main-card">
-        {/* Tab Navigation */}
-        <div className="tab-nav" role="tablist">
-          <button
-            role="tab"
-            aria-selected={activeTab === "text"}
-            className={`tab-btn${activeTab === "text" ? " tab-btn--active" : ""}`}
-            onClick={() => setActiveTab("text")}
-          >
-            📝 Text Input
-          </button>
-          <button className={`nav-link ${activeNav === "about" ? "active" : ""}`} onClick={() => { setActiveNav("about"); closeMobileMenu(); }}>
-            About
-          </button>
-          <a className="nav-link" href="https://github.com/KoushalKishor09/meet-to-action" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>
-            GitHub
-          </a>
-        </div>
-      </nav>
-
+      {/* Theme Toggle Button - fixed, outside navbar */}
       <button
         className="theme-toggle-btn"
         onClick={toggleTheme}
@@ -302,28 +272,60 @@ function App() {
       </button>
 
       {activeNav === "about" ? (
-        <AboutPage />
+        <div className="app-container">
+          <AboutPage />
+        </div>
       ) : (
         <div className="app-container">
+          {/* Header */}
           <header className="app-header">
             <span className="ai-badge">✨ AI-Powered</span>
             <h1 className="app-title">Meet to Action</h1>
-            <p className="app-subtitle">Convert meeting recordings and transcripts into actionable tasks</p>
+            <p className="app-subtitle">
+              Convert meeting recordings and transcripts into actionable tasks
+            </p>
           </header>
 
+          {/* Main Card */}
           <main className="main-card">
+            {/* Tab Navigation */}
             <div className="tab-nav" role="tablist">
-              <button role="tab" aria-selected={activeTab === "text"} className={`tab-btn${activeTab === "text" ? " tab-btn--active" : ""}`} onClick={() => setActiveTab("text")}>📝 Text Input</button>
-              <button role="tab" aria-selected={activeTab === "audio"} className={`tab-btn${activeTab === "audio" ? " tab-btn--active" : ""}`} onClick={() => setActiveTab("audio")}>🎙️ Audio Upload</button>
+              <button
+                role="tab"
+                aria-selected={activeTab === "text"}
+                className={`tab-btn${activeTab === "text" ? " tab-btn--active" : ""}`}
+                onClick={() => setActiveTab("text")}
+              >
+                📝 Text Input
+              </button>
+              <button
+                role="tab"
+                aria-selected={activeTab === "audio"}
+                className={`tab-btn${activeTab === "audio" ? " tab-btn--active" : ""}`}
+                onClick={() => setActiveTab("audio")}
+              >
+                🎙️ Audio Upload
+              </button>
             </div>
 
             {activeTab === "text" && (
               <div className="panel" role="tabpanel">
                 <div className="textarea-wrapper">
-                  <textarea className="meeting-textarea" rows={8} placeholder="Paste your meeting notes or transcript here..." value={text} onChange={(e) => setText(e.target.value)} aria-label="Meeting text input" />
+                  <textarea
+                    className="meeting-textarea"
+                    rows={8}
+                    placeholder="Paste your meeting notes or transcript here..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    aria-label="Meeting text input"
+                  />
                   <div className="textarea-footer">
                     <span className="char-counter">{text.length} characters</span>
-                    <button className="extract-btn" onClick={extractTasks} disabled={!text.trim() || loading}>
+                    <button
+                      className="extract-btn"
+                      onClick={extractTasks}
+                      disabled={!text.trim() || loading}
+                    >
                       {loading ? "Extracting…" : "Extract Tasks"}
                     </button>
                   </div>
@@ -333,163 +335,200 @@ function App() {
 
             {activeTab === "audio" && (
               <div className="panel" role="tabpanel">
-                <div className={`drop-zone${dragOver ? " drop-zone--active" : ""}`} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onClick={() => fileInputRef.current.click()} role="button" tabIndex={0} aria-label="Audio file drop zone">
-                  <input ref={fileInputRef} type="file" accept={SUPPORTED_EXTENSIONS} className="file-input-hidden" onChange={handleFileChange} aria-label="Audio file input" />
-                  {audioProcessing ? <div className="processing-indicator"><span className="spinner"></span><p>Processing audio…</p></div> : <div className="drop-zone-content"><p className="drop-zone-text">Drag & drop your audio file here</p></div>}
+                <div
+                  className={`drop-zone${dragOver ? " drop-zone--active" : ""}`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => fileInputRef.current.click()}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Audio file drop zone"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={SUPPORTED_EXTENSIONS}
+                    className="file-input-hidden"
+                    onChange={handleFileChange}
+                    aria-label="Audio file input"
+                  />
+                  {audioProcessing ? (
+                    <div className="processing-indicator">
+                      <span className="spinner"></span>
+                      <p>Processing audio…</p>
+                    </div>
+                  ) : audioFile ? (
+                    <div className="file-selected">
+                      <span className="file-icon">🎵</span>
+                      <p className="file-name">{audioFile.name}</p>
+                      <p className="file-hint">Click to choose a different file</p>
+                    </div>
+                  ) : (
+                    <div className="drop-zone-content">
+                      <p className="drop-zone-text">Drag &amp; drop your audio file here</p>
+                      <p className="drop-zone-hint">
+                        or click to browse — MP3, M4A, AAC, OGG, WAV, FLAC, WebM, WMA
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </main>
 
-      {/* Error Message */}
-      {error && (
-        <div role="alert" className="error-alert">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Feature Cards */}
-      <section className="feature-cards" aria-label="Features">
-        <div className="feature-card">
-          <span className="feature-icon feature-icon--purple">🔮</span>
-          <h3 className="feature-title">Smart Extraction</h3>
-          <p className="feature-desc">
-            Automatically identifies action items, owners, and deadlines from natural language.
-          </p>
-        </div>
-        <div className="feature-card">
-          <span className="feature-icon feature-icon--green">✅</span>
-          <h3 className="feature-title">Structured Output</h3>
-          <p className="feature-desc">
-            Organises tasks with assignees and due dates in a clean, readable table.
-          </p>
-        </div>
-        <div className="feature-card">
-          <span className="feature-icon feature-icon--blue">⬇️</span>
-          <h3 className="feature-title">Easy Export</h3>
-          <p className="feature-desc">
-            Download results as JSON for seamless integration with your project tools.
-          </p>
-        </div>
-      </section>
-
-      {/* Meeting Summary */}
-      {summary && (
-        <section className="results-section" style={{ marginBottom: "24px" }} aria-label="Meeting summary">
-          <div className="results-header">
-            <h2 className="results-title">Meeting Summary</h2>
-          </div>
-          <p className="summary-text">{summary}</p>
-        </section>
-      )}
-
-      {/* Results Table */}
-      {tasks.length > 0 && (
-        <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
-          <div className="results-header">
-            <h2 className="results-title">Extracted Tasks</h2>
-            <div className="header-actions">
-              <button
-                className={`view-toggle-btn${viewMode === "tiles" ? " view-toggle-btn--active" : ""}`}
-                onClick={() => setViewMode(viewMode === "table" ? "tiles" : "table")}
-                aria-label={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
-                title={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
-              >
-                {viewMode === "table" ? "⊞ Tiles View" : "≡ Table View"}
-              </button>
-              <div className="export-dropdown" ref={exportMenuRef}>
-                <button
-                  className="export-btn"
-                  onClick={() => setShowExportMenu((prev) => !prev)}
-                  aria-haspopup="true"
-                  aria-expanded={showExportMenu}
-                  aria-label="Export"
-                >
-                  ⬇️ Export
-                </button>
-                {showExportMenu && (
-                  <ul className="export-menu" role="menu">
-                    <li role="none">
-                      <button
-                        role="menuitem"
-                        className="export-menu-item"
-                        onClick={() => { exportJSON(); setShowExportMenu(false); }}
-                      >
-                        📄 Export JSON
-                      </button>
-                    </li>
-                    <li role="none">
-                      <button
-                        role="menuitem"
-                        className="export-menu-item"
-                        onClick={() => { exportPDF(); setShowExportMenu(false); }}
-                      >
-                        🖨️ Export as PDF
-                      </button>
-                    </li>
-                  </ul>
-                )}
-              </div>
+          {/* Error Message */}
+          {error && (
+            <div role="alert" className="error-alert">
+              ⚠️ {error}
             </div>
-          </div>
-          {viewMode === "table" ? (
-          <div className="table-wrapper">
-            <table className="tasks-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Task</th>
-                  <th>Owner</th>
-                  <th>Deadline</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((t, i) => (
-                  <tr key={i} className={t.status === "Done" ? "task-row--done" : ""}>
-                    <td className="task-num">{i + 1}</td>
-                    <td>{t.task}</td>
-                    <td>{t.owner}</td>
-                    <td>{t.deadline}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
-                        onClick={() => toggleStatus(i)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {t.status || "Pending"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          ) : (
-          <div className="tiles-grid">
-            {tasks.map((t, i) => (
-              <div key={i} className={`task-tile${t.status === "Done" ? " task-tile--done" : ""}`}>
-                <div className="task-tile-number">{i + 1}</div>
-                <h4 className="task-tile-title">{t.task}</h4>
-                <div className="task-tile-meta">
-                  <span className="task-tile-label">👤 Owner</span>
-                  <span className="task-tile-value">{t.owner || "—"}</span>
-                </div>
-                <div className="task-tile-meta">
-                  <span className="task-tile-label">📅 Deadline</span>
-                  <span className="task-tile-value">{t.deadline || "—"}</span>
-                </div>
-                <div className="task-tile-footer">
-                  <span
-                    className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
-                    onClick={() => toggleStatus(i)}
-                    style={{ cursor: "pointer" }}
-                    title="Click to toggle status"
+          )}
+
+          {/* Feature Cards */}
+          <section className="feature-cards" aria-label="Features">
+            <div className="feature-card">
+              <span className="feature-icon feature-icon--purple">🔮</span>
+              <h3 className="feature-title">Smart Extraction</h3>
+              <p className="feature-desc">
+                Automatically identifies action items, owners, and deadlines from natural language.
+              </p>
+            </div>
+            <div className="feature-card">
+              <span className="feature-icon feature-icon--green">✅</span>
+              <h3 className="feature-title">Structured Output</h3>
+              <p className="feature-desc">
+                Organises tasks with assignees and due dates in a clean, readable table.
+              </p>
+            </div>
+            <div className="feature-card">
+              <span className="feature-icon feature-icon--blue">⬇️</span>
+              <h3 className="feature-title">Easy Export</h3>
+              <p className="feature-desc">
+                Download results as JSON for seamless integration with your project tools.
+              </p>
+            </div>
+          </section>
+
+          {/* Meeting Summary */}
+          {summary && (
+            <section className="results-section" style={{ marginBottom: "24px" }} aria-label="Meeting summary">
+              <div className="results-header">
+                <h2 className="results-title">Meeting Summary</h2>
+              </div>
+              <p className="summary-text">{summary}</p>
+            </section>
+          )}
+
+          {/* Results Table */}
+          {tasks.length > 0 && (
+            <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
+              <div className="results-header">
+                <h2 className="results-title">Extracted Tasks</h2>
+                <div className="header-actions">
+                  <button
+                    className={`view-toggle-btn${viewMode === "tiles" ? " view-toggle-btn--active" : ""}`}
+                    onClick={() => setViewMode(viewMode === "table" ? "tiles" : "table")}
+                    aria-label={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
+                    title={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
                   >
-                    {t.status || "Pending"}
-                  </span>
+                    {viewMode === "table" ? "⊞ Tiles View" : "≡ Table View"}
+                  </button>
+                  <div className="export-dropdown" ref={exportMenuRef}>
+                    <button
+                      className="export-btn"
+                      onClick={() => setShowExportMenu((prev) => !prev)}
+                      aria-haspopup="true"
+                      aria-expanded={showExportMenu}
+                      aria-label="Export"
+                    >
+                      ⬇️ Export
+                    </button>
+                    {showExportMenu && (
+                      <ul className="export-menu" role="menu">
+                        <li role="none">
+                          <button
+                            role="menuitem"
+                            className="export-menu-item"
+                            onClick={() => { exportJSON(); setShowExportMenu(false); }}
+                          >
+                            📄 Export JSON
+                          </button>
+                        </li>
+                        <li role="none">
+                          <button
+                            role="menuitem"
+                            className="export-menu-item"
+                            onClick={() => { exportPDF(); setShowExportMenu(false); }}
+                          >
+                            🖨️ Export as PDF
+                          </button>
+                        </li>
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
+              {viewMode === "table" ? (
+                <div className="table-wrapper">
+                  <table className="tasks-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Task</th>
+                        <th>Owner</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasks.map((t, i) => (
+                        <tr key={i} className={t.status === "Done" ? "task-row--done" : ""}>
+                          <td className="task-num">{i + 1}</td>
+                          <td>{t.task}</td>
+                          <td>{t.owner}</td>
+                          <td>{t.deadline}</td>
+                          <td>
+                            <span
+                              className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                              onClick={() => toggleStatus(i)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              {t.status || "Pending"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="tiles-grid">
+                  {tasks.map((t, i) => (
+                    <div key={i} className={`task-tile${t.status === "Done" ? " task-tile--done" : ""}`}>
+                      <div className="task-tile-number">{i + 1}</div>
+                      <h4 className="task-tile-title">{t.task}</h4>
+                      <div className="task-tile-meta">
+                        <span className="task-tile-label">👤 Owner</span>
+                        <span className="task-tile-value">{t.owner || "—"}</span>
+                      </div>
+                      <div className="task-tile-meta">
+                        <span className="task-tile-label">📅 Deadline</span>
+                        <span className="task-tile-value">{t.deadline || "—"}</span>
+                      </div>
+                      <div className="task-tile-footer">
+                        <span
+                          className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                          onClick={() => toggleStatus(i)}
+                          style={{ cursor: "pointer" }}
+                          title="Click to toggle status"
+                        >
+                          {t.status || "Pending"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -497,11 +536,22 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-links">
-          <button className="footer-link" onClick={() => setActiveNav("home")}>Meet to Action</button>
+          <button className="footer-link" onClick={() => setActiveNav("home")}>
+            Meet to Action
+          </button>
           <span className="footer-sep">|</span>
-          <a className="footer-link" href="https://github.com/KoushalKishor09/meet-to-action" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a
+            className="footer-link"
+            href="https://github.com/KoushalKishor09/meet-to-action"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
           <span className="footer-sep">|</span>
-          <button className="footer-link" onClick={() => setActiveNav("about")}>About Us</button>
+          <button className="footer-link" onClick={() => setActiveNav("about")}>
+            About Us
+          </button>
         </div>
       </footer>
     </>
