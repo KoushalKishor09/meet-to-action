@@ -1,28 +1,32 @@
 function AboutPage() {
-  const features = [
+  const teamMembers = [
     {
-      title: "AI-Powered Extraction",
-      description: "Convert meeting transcripts and recordings into clear, actionable tasks using advanced AI technology."
+      name: "Koushal Kishor",
+      role: "Project Lead",
+      linkedin: "",
+      email: "",
+      github: "https://github.com/KoushalKishor09"
     },
     {
-      title: "Structured Task Creation",
-      description: "Automatically extract task owners, deadlines, and priorities from your meeting content."
+      name: "Team Member 2",
+      role: "Frontend Developer",
+      linkedin: "",
+      email: "",
+      github: ""
     },
     {
-      title: "Multiple Input Formats",
-      description: "Process text notes, audio files, or video recordings with flexible input options."
+      name: "Team Member 3",
+      role: "Backend Developer",
+      linkedin: "",
+      email: "",
+      github: ""
     },
     {
-      title: "Easy Review & Export",
-      description: "Review extracted tasks, make edits, and export results in practical formats for your workflow."
-    },
-    {
-      title: "Team Collaboration",
-      description: "Help teams reduce manual note processing and improve follow-through on action items."
-    },
-    {
-      title: "Actionable Insights",
-      description: "Turn unstructured meeting data into organized, actionable intelligence for better productivity."
+      name: "Team Member 4",
+      role: "AI/ML Engineer",
+      linkedin: "",
+      email: "",
+      github: ""
     }
   ];
 
@@ -38,30 +42,53 @@ function AboutPage() {
           Our goal is to help teams reduce manual note processing and improve follow-through by
           extracting task owners, deadlines, and structured action items.
         </p>
+        <p className="about-page-text">
+          You can process text notes or audio files, review extracted tasks, and export results
+          in practical formats for your workflow.
+        </p>
       </div>
 
-      <div className="feature-cards">
-        {features.map((feature, index) => (
-          <div key={index} className="feature-card">
-            <h3 style={{
-              fontSize: "1.2rem",
-              fontWeight: "700",
-              color: "var(--text-primary)",
-              marginBottom: "12px"
-            }}>
-              {feature.title}
-            </h3>
-            <p style={{
-              fontSize: "14px",
-              color: "var(--text-muted)",
-              lineHeight: "1.6",
-              margin: "0"
-            }}>
-              {feature.description}
-            </p>
-          </div>
-        ))}
-      </div>
+      <section className="team-section" aria-label="Team contributors">
+        <div className="team-section-head">
+          <h3 className="about-page-title team-section-title">Team Contributors</h3>
+          <p className="about-page-text team-section-subtitle">
+            The people who built and contributed to making this website strong.
+          </p>
+        </div>
+
+        <div className="team-grid">
+          {teamMembers.map((member) => (
+            <article className="team-member-card" key={member.name}>
+              <div className="team-member-avatar" aria-hidden="true">
+                {member.name.charAt(0).toUpperCase()}
+              </div>
+              <h4 className="team-member-name">{member.name}</h4>
+              <p className="team-member-role">{member.role}</p>
+
+              <div className="team-member-links">
+                {member.linkedin && (
+                  <a className="team-member-link" href={member.linkedin} target="_blank" rel="noopener noreferrer">
+                    LinkedIn
+                  </a>
+                )}
+                {member.email && (
+                  <a className="team-member-link" href={`mailto:${member.email}`}>
+                    Email
+                  </a>
+                )}
+                {member.github && (
+                  <a className="team-member-link" href={member.github} target="_blank" rel="noopener noreferrer">
+                    GitHub
+                  </a>
+                )}
+                {!member.linkedin && !member.email && !member.github && (
+                  <span className="team-member-placeholder">Profile links will be added soon.</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }
