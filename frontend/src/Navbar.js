@@ -37,7 +37,7 @@ function Navbar({ activeNav, setActiveNav, menuOpen, setMenuOpen }) {
           Meet to Action &mdash; AI Task Extraction
         </button>
 
-        <ul className="nav-links" role="list">
+        <ul className="nav-links">
           <li>
             <button
               className={`nav-link${activeNav === "home" ? " nav-link--active" : ""}`}
@@ -81,7 +81,6 @@ function Navbar({ activeNav, setActiveNav, menuOpen, setMenuOpen }) {
         <ul
           id="mobile-menu"
           className="mobile-menu"
-          role="list"
         >
           <li>
             <button
