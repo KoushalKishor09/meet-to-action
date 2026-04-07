@@ -12,3 +12,19 @@ if (typeof global.TextEncoder === 'undefined') {
 if (typeof global.TextDecoder === 'undefined') {
   global.TextDecoder = TextDecoder;
 }
+
+// Polyfill window.matchMedia for ThemeContext system preference detection
+window.matchMedia = window.matchMedia || function (query) {
+  return {
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: function () {},
+    removeListener: function () {},
+    addEventListener: function () {},
+    removeEventListener: function () {},
+    dispatchEvent: function () {},
+  };
+};
+
+

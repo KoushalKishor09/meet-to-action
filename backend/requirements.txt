@@ -5,3 +5,4 @@ python-dotenv>=1.0.0
 groq>=0.11.0
 pymongo>=4.7.0
 apscheduler>=3.10.4
+telegram >=0.0.1a5

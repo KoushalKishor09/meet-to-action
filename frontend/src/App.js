@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import "./App.css";
-import { useTheme } from "./useTheme";
-import AboutPage from "./AboutPage";
 
 const SUPPORTED_AUDIO_FORMATS = [
   "audio/mpeg",
@@ -48,11 +46,6 @@ function validateAudioFile(file) {
 }
 
 function App() {
-  const { isDark, toggleTheme } = useTheme();
-
-  const [activeNav, setActiveNav] = useState("home");
-  const [menuOpen, setMenuOpen] = useState(false);
-
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -256,26 +249,27 @@ function App() {
   };
 
   return (
-    <>
-      <nav className="top-nav">
-        <div className="brand-block">
-          <button className="brand-btn" onClick={() => { setActiveNav("home"); closeMobileMenu(); }}>
-            Meet to Action — AI Task Extraction
-          </button>
-        </div>
+    <div className="app-container">
+      {/* Header */}
+      <header className="app-header">
+        <span className="ai-badge">✨ AI-Powered</span>
+        <h1 className="app-title">Meet to Action</h1>
+        <p className="app-subtitle">
+          Convert meeting recordings and transcripts into actionable tasks
+        </p>
+      </header>
 
-        <button
-          className="menu-toggle"
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((prev) => !prev)}
-        >
-          ☰
-        </button>
-
-        <div className={`desktop-links ${menuOpen ? "mobile-open" : ""}`}>
-          <button className={`nav-link ${activeNav === "home" ? "active" : ""}`} onClick={() => { setActiveNav("home"); closeMobileMenu(); }}>
-            Home
+      {/* Main Card */}
+      <main className="main-card">
+        {/* Tab Navigation */}
+        <div className="tab-nav" role="tablist">
+          <button
+            role="tab"
+            aria-selected={activeTab === "text"}
+            className={`tab-btn${activeTab === "text" ? " tab-btn--active" : ""}`}
+            onClick={() => setActiveTab("text")}
+          >
+            📝 Text Input
           </button>
           <button className={`nav-link ${activeNav === "about" ? "active" : ""}`} onClick={() => { setActiveNav("about"); closeMobileMenu(); }}>
             About
@@ -335,25 +329,153 @@ function App() {
             )}
           </main>
 
-          {error && <div role="alert" className="error-alert">⚠️ {error}</div>}
+      {/* Error Message */}
+      {error && (
+        <div role="alert" style={{ margin: "0 0 24px", padding: "14px 20px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "10px", color: "#b91c1c", fontSize: "14px" }}>
+          ⚠️ {error}
+        </div>
+      )}
 
-          {tasks.length > 0 && (
-            <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
-              <div className="results-header">
-                <h2 className="results-title">Extracted Tasks</h2>
-                <div className="header-actions">
-                  <button className={`view-toggle-btn${viewMode === "tiles" ? " view-toggle-btn--active" : ""}`} onClick={() => setViewMode(viewMode === "table" ? "tiles" : "table")}>
-                    {viewMode === "table" ? "⊞ Tiles View" : "≡ Table View"}
-                  </button>
-                  <div className="export-dropdown" ref={exportMenuRef}>
-                    <button className="export-btn" onClick={() => setShowExportMenu((prev) => !prev)}>⬇️ Export</button>
-                    {showExportMenu && (
-                      <ul className="export-menu" role="menu">
-                        <li><button className="export-menu-item" onClick={() => { exportJSON(); setShowExportMenu(false); }}>📄 Export JSON</button></li>
-                        <li><button className="export-menu-item" onClick={() => { exportPDF(); setShowExportMenu(false); }}>🖨️ Export as PDF</button></li>
-                      </ul>
-                    )}
-                  </div>
+      {/* Feature Cards */}
+      <section className="feature-cards" aria-label="Features">
+        <div className="feature-card">
+          <span className="feature-icon feature-icon--purple">🔮</span>
+          <h3 className="feature-title">Smart Extraction</h3>
+          <p className="feature-desc">
+            Automatically identifies action items, owners, and deadlines from natural language.
+          </p>
+        </div>
+        <div className="feature-card">
+          <span className="feature-icon feature-icon--green">✅</span>
+          <h3 className="feature-title">Structured Output</h3>
+          <p className="feature-desc">
+            Organises tasks with assignees and due dates in a clean, readable table.
+          </p>
+        </div>
+        <div className="feature-card">
+          <span className="feature-icon feature-icon--blue">⬇️</span>
+          <h3 className="feature-title">Easy Export</h3>
+          <p className="feature-desc">
+            Download results as JSON for seamless integration with your project tools.
+          </p>
+        </div>
+      </section>
+
+      {/* Meeting Summary */}
+      {summary && (
+        <section className="results-section" style={{ marginBottom: "24px" }} aria-label="Meeting summary">
+          <div className="results-header">
+            <h2 className="results-title">Meeting Summary</h2>
+          </div>
+          <p style={{ padding: "16px 24px", fontSize: "14px", color: "#1e293b", lineHeight: "1.6" }}>{summary}</p>
+        </section>
+      )}
+
+      {/* Results Table */}
+      {tasks.length > 0 && (
+        <section ref={resultsRef} className="results-section" aria-label="Extracted tasks">
+          <div className="results-header">
+            <h2 className="results-title">Extracted Tasks</h2>
+            <div className="header-actions">
+              <button
+                className={`view-toggle-btn${viewMode === "tiles" ? " view-toggle-btn--active" : ""}`}
+                onClick={() => setViewMode(viewMode === "table" ? "tiles" : "table")}
+                aria-label={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
+                title={viewMode === "table" ? "Switch to Tiles View" : "Switch to Table View"}
+              >
+                {viewMode === "table" ? "⊞ Tiles View" : "≡ Table View"}
+              </button>
+              <div className="export-dropdown" ref={exportMenuRef}>
+                <button
+                  className="export-btn"
+                  onClick={() => setShowExportMenu((prev) => !prev)}
+                  aria-haspopup="true"
+                  aria-expanded={showExportMenu}
+                  aria-label="Export"
+                >
+                  ⬇️ Export
+                </button>
+                {showExportMenu && (
+                  <ul className="export-menu" role="menu">
+                    <li role="none">
+                      <button
+                        role="menuitem"
+                        className="export-menu-item"
+                        onClick={() => { exportJSON(); setShowExportMenu(false); }}
+                      >
+                        📄 Export JSON
+                      </button>
+                    </li>
+                    <li role="none">
+                      <button
+                        role="menuitem"
+                        className="export-menu-item"
+                        onClick={() => { exportPDF(); setShowExportMenu(false); }}
+                      >
+                        🖨️ Export as PDF
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+          {viewMode === "table" ? (
+          <div className="table-wrapper">
+            <table className="tasks-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Task</th>
+                  <th>Owner</th>
+                  <th>Deadline</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((t, i) => (
+                  <tr key={i} style={{ background: t.status === "Done" ? "#d4edda" : "white" }}>
+                    <td className="task-num">{i + 1}</td>
+                    <td>{t.task}</td>
+                    <td>{t.owner}</td>
+                    <td>{t.deadline}</td>
+                    <td>
+                      <span
+                        className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                        onClick={() => toggleStatus(i)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {t.status || "Pending"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          ) : (
+          <div className="tiles-grid">
+            {tasks.map((t, i) => (
+              <div key={i} className={`task-tile${t.status === "Done" ? " task-tile--done" : ""}`}>
+                <div className="task-tile-number">{i + 1}</div>
+                <h4 className="task-tile-title">{t.task}</h4>
+                <div className="task-tile-meta">
+                  <span className="task-tile-label">👤 Owner</span>
+                  <span className="task-tile-value">{t.owner || "—"}</span>
+                </div>
+                <div className="task-tile-meta">
+                  <span className="task-tile-label">📅 Deadline</span>
+                  <span className="task-tile-value">{t.deadline || "—"}</span>
+                </div>
+                <div className="task-tile-footer">
+                  <span
+                    className={`status-badge ${t.status === "Done" ? "status-badge--done" : "status-badge--pending"}`}
+                    onClick={() => toggleStatus(i)}
+                    style={{ cursor: "pointer" }}
+                    title="Click to toggle status"
+                  >
+                    {t.status || "Pending"}
+                  </span>
                 </div>
               </div>
             </section>
