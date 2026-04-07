@@ -103,7 +103,7 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
          │
          ▼
 ┌──────────────────────────────┐
-│ LLM Extraction (LLaMA 3)      │
+│ LLM Extraction (LLaMA 3)     │
 ├──────────────────────────────┤
 │ Extract:                     │
 │ • Action Items               │
@@ -115,7 +115,7 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
 ┌──────────────────────────┐
 │   Task Dashboard (React) │
 ├──────────────────────────┤
-│ • Display Tasks           │
+│ • Display Tasks          │
 │ • Manage Status          │
 │ • Track Progress         │
 └────────┬─────────────────┘
@@ -125,7 +125,7 @@ Perfect for teams that want to maximize meeting efficiency and ensure nothing fa
 │ APScheduler (Reminders)      │
 ├──────────────────────────────┤
 │ • Send Notifications         │
-│ • Track Deadlines           │
+│ • Track Deadlines            │
 └────────┬─────────────────────┘
          │
          ▼
