@@ -5,7 +5,6 @@ function Navbar({ activeNav, onNavigate, menuOpen, setMenuOpen }) {
 
   const handleNavClick = (page) => {
     onNavigate(page);
-    setMenuOpen(false);
   };
 
   useEffect(() => {
