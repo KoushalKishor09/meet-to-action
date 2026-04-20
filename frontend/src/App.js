@@ -22,6 +22,10 @@ const SUPPORTED_EXTENSIONS = ".mp3,.m4a,.m4b,.aac,.ogg,.oga,.wav,.flac,.webm,.wm
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
+function getPageFromPath(pathname = window.location.pathname) {
+  return pathname === "/about" ? "about" : "home";
+}
+
 function validateAudioFile(file) {
   if (!file) return { valid: false, error: "No file selected." };
   if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -50,7 +54,7 @@ function validateAudioFile(file) {
 
 function App() {
   const { isDark, toggleTheme } = useTheme();
-  const [activeNav, setActiveNav] = useState("home");
+  const [activeNav, setActiveNav] = useState(() => getPageFromPath());
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("text");
   const [text, setText] = useState("");
@@ -75,6 +79,15 @@ function App() {
   }, [tasks]);
 
   useEffect(() => {
+    const handlePopState = () => {
+      setActiveNav(getPageFromPath());
+      setMenuOpen(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
     if (!showExportMenu) return;
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setShowExportMenu(false);
@@ -91,6 +104,15 @@ function App() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showExportMenu]);
+
+  const navigateTo = (page) => {
+    const nextPath = page === "about" ? "/about" : "/";
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({}, "", nextPath);
+    }
+    setActiveNav(page);
+    setMenuOpen(false);
+  };
 
   const extractTasks = async () => {
     setLoading(true);
@@ -256,7 +278,7 @@ function App() {
     <>
       <Navbar
         activeNav={activeNav}
-        setActiveNav={setActiveNav}
+        onNavigate={navigateTo}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
       />
@@ -536,7 +558,7 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-links">
-          <button className="footer-link" onClick={() => setActiveNav("home")}>
+          <button className="footer-link" onClick={() => navigateTo("home")}>
             Meet to Action
           </button>
           <span className="footer-sep">|</span>
@@ -549,7 +571,7 @@ function App() {
             GitHub
           </a>
           <span className="footer-sep">|</span>
-          <button className="footer-link" onClick={() => setActiveNav("about")}>
+          <button className="footer-link" onClick={() => navigateTo("about")}>
             About Us
           </button>
         </div>

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 
-function Navbar({ activeNav, setActiveNav, menuOpen, setMenuOpen }) {
+function Navbar({ activeNav, onNavigate, menuOpen, setMenuOpen }) {
   const mobileMenuRef = useRef(null);
 
   const handleNavClick = (page) => {
-    setActiveNav(page);
+    onNavigate(page);
     setMenuOpen(false);
   };
 
@@ -51,7 +51,7 @@ function Navbar({ activeNav, setActiveNav, menuOpen, setMenuOpen }) {
               className={`nav-link${activeNav === "about" ? " nav-link--active" : ""}`}
               onClick={() => handleNavClick("about")}
             >
-              About
+              About Us
             </button>
           </li>
           <li>
@@ -95,7 +95,7 @@ function Navbar({ activeNav, setActiveNav, menuOpen, setMenuOpen }) {
               className={`mobile-nav-link${activeNav === "about" ? " nav-link--active" : ""}`}
               onClick={() => handleNavClick("about")}
             >
-              About
+              About Us
             </button>
           </li>
           <li>
