@@ -107,9 +107,11 @@ function App() {
 
   const navigateTo = (page) => {
     const nextPath = page === "about" ? "/about" : "/";
-    if (window.location.pathname !== nextPath) {
-      window.history.pushState({}, "", nextPath);
+    if (window.location.pathname === nextPath) {
+      setMenuOpen(false);
+      return;
     }
+    window.history.pushState({}, "", nextPath);
     setActiveNav(page);
     setMenuOpen(false);
   };
