@@ -1,9 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { validateAudioFile, SUPPORTED_AUDIO_FORMATS, SUPPORTED_EXTENSIONS } from './App';
 import { ThemeProvider } from './ThemeContext';
 
 const renderApp = () => render(<ThemeProvider><App /></ThemeProvider>);
+
+beforeEach(() => {
+  window.history.pushState({}, '', '/');
+});
 
 test('renders the AI-Powered badge', () => {
   renderApp();
@@ -211,3 +215,18 @@ test('theme toggle button switches icon when clicked', async () => {
   expect(screen.getByRole('button', { name: /Switch to light mode/i }).textContent).toBe('☀️');
 });
 
+test('navigates to About Us page from navbar and updates URL route', async () => {
+  renderApp();
+  const nav = screen.getByRole('navigation', { name: /Main navigation/i });
+  await userEvent.click(within(nav).getByRole('button', { name: /About Us/i }));
+  expect(screen.getByRole('heading', { name: /About Us/i })).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/about');
+  expect(screen.queryByText('✨ AI-Powered')).not.toBeInTheDocument();
+});
+
+test('renders About Us page when opened on /about route', () => {
+  window.history.pushState({}, '', '/about');
+  renderApp();
+  expect(screen.getByRole('heading', { name: /About Us/i })).toBeInTheDocument();
+  expect(screen.queryByText('✨ AI-Powered')).not.toBeInTheDocument();
+});
